@@ -17,11 +17,18 @@ rankings_table = Table('rankings', metadata,
     Column('submission_id', String),
     Column('user_name', String, nullable=True)
 )
+
+satisfaction_table = Table('satisfaction', metadata,
+    Column('id', Integer, primary_key=True, autoincrement=True),
+    Column('submission_id', String),
+    Column('user_name', String, nullable=True),
+    Column('satisfaction_score', Integer)
+)
+
 metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
 # --- Streamlit App ---
-
 st.title("Ranked Item Input Form")
 
 # --- User Name Input ---
@@ -84,6 +91,26 @@ if user_name:
                 st.error(f"An error occurred: {e}")
             finally:
                 session.close()
+
+    # --- Satisfaction Survey ---
+    st.subheader("Satisfaction Survey")
+    satisfaction_score = st.slider("How satisfied are you with these recommendations? (1 = Not satisfied, 10 = Very satisfied)", 1, 10, 5)
+    if st.button("Submit Satisfaction Score"):
+        session = Session()
+        try:
+            new_satisfaction = satisfaction_table.insert().values(
+                submission_id=submission_id,
+                user_name=user_name,
+                satisfaction_score=satisfaction_score
+            )
+            session.execute(new_satisfaction)
+            session.commit()
+            st.success("Your satisfaction score has been recorded!")
+        except Exception as e:
+            session.rollback()
+            st.error(f"An error occurred: {e}")
+        finally:
+            session.close()
 
     # --- Data Display (Optional) ---
     if st.checkbox("Show submitted rankings"):
