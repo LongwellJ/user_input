@@ -49,9 +49,12 @@ def clean_html(raw_html):
 
 # Function to remove unwanted text from the summary
 def remove_footer_text(summary):
-    # Updated regular expression to remove "© 2024 TechCrunch. All rights reserved. For personal use only" and anything after it
-    footer_text = r"© \d{4} TechCrunch.*"
-    return re.sub(footer_text, '', summary).strip()
+    # Find the index of the "©" symbol and return only the part before it
+    index = summary.find("©")
+    if index != -1:
+        return summary[:index].strip()
+    return summary.strip()
+
 
 # Function to escape $ symbols for proper display
 #deperecated
@@ -81,20 +84,37 @@ if "article_content" not in st.session_state:
         # Escape $ symbols in title and content
         title = escape_dollars(title)
         content = escape_dollars(content)
+        #add the ... if the text got truncated
+        if len(content) == 150:
+            content += "..."
 
         # Get the URL of the article
         url = article.get("link", "#")  # Fallback to '#' if no URL is available
 
         # Store the formatted article content in session state with a link to the article
+        # Store the formatted article content in session state with a link to the article
+        # Store the formatted article content in session state with a link to the article
         article_content = f"""
-        <a href="{url}" target="_blank" style="text-decoration: none;">
+        <a href="{url}" target="_blank" style="text-decoration: none; color: inherit;">
             <div style="background-color: #333333; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); color: white;">
                 <h3 style="font-size: 20px; font-weight: bold;">{title}</h3>
-                <p style="font-size: 16px;">{content}...</p>
+                <p style="font-size: 16px; color: inherit;">{content}</p>
             </div>
         </a>
         """
+
+        # Append the article content to session state
         st.session_state.article_content.append(article_content)
+
+        # Inject the hover effect CSS directly into the app
+        st.markdown("""
+            <style>
+                a:hover {
+                    color: blue !important;
+                    text-decoration: underline !important;
+                }
+            </style>
+        """, unsafe_allow_html=True)
 
 if user_name:
     if not random_articles:
