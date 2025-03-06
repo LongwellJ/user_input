@@ -1,2 +1,15 @@
 rankings.db
 venv
+.env
+nyt_api.py
+beutiful_soup_test.py
+cnn_firecrawl.py
+cnn_rss.py
+exa_nyt.py
+firecrawl_article.py
+nyt_api_archive.py
+nyt_api_rss.py
+nyt_firebase_bs.py
+tech_crunch_firecrawl.py
+techcrunchrss.py
+techcrunch_top_stories.json
