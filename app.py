@@ -97,6 +97,7 @@ if user_name:
     if not random_articles:
         st.error("No articles available to display.")
     else:
+        st.title("Articles")
         st.write("Assign a score to each item (1 = Strong Accept, 0 = Weak Accept, -1 = Reject):")
         ranks = []
 
