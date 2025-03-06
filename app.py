@@ -54,8 +54,11 @@ def remove_footer_text(summary):
     return re.sub(footer_text, '', summary).strip()
 
 # Function to escape $ symbols for proper display
+#deperecated
+# def escape_dollars(text):
+#     return text.replace('$', '\\$')
 def escape_dollars(text):
-    return text.replace('$', '\\$')
+    return text.replace('$', '$')
 
 # --- Streamlit App ---
 st.title("Read My Sources - TechCrunch")
