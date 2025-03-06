@@ -58,7 +58,7 @@ def escape_dollars(text):
     return text.replace('$', '\\$')
 
 # --- Streamlit App ---
-st.title("Read My Sources")
+st.title("Read My Sources - TechCrunch")
 
 # --- User Name Input ---
 user_name = st.text_input("Please enter your name:")
@@ -110,7 +110,8 @@ if user_name:
 
         with col2:
             # Add the score input form in the second column with the label "Score"
-            score = st.number_input('Score', min_value=-1, max_value=1, key=f'score_{i}_article')
+            score = st.number_input('Score', min_value=-1, max_value=1, value=0, key=f'score_{i}_article')
+
 
     # --- Submit Rankings Button ---
     if st.button("Submit Scores"):
