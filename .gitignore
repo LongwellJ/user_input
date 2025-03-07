@@ -11,5 +11,10 @@ nyt_api_archive.py
 nyt_api_rss.py
 nyt_firebase_bs.py
 tech_crunch_firecrawl.py
+tech_crunch_firecrawl_mongo.py
 techcrunchrss.py
 techcrunch_top_stories.json
+techcrunch_top_stories_backup.json
+mongo_drop_dbs.py
+.streamlit/secrets.toml
+app_legacy.py

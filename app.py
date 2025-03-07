@@ -1,66 +1,47 @@
 import streamlit as st
-import sqlite3
 import pandas as pd
 import uuid
 import random
-import json
 from bs4 import BeautifulSoup
-from sqlalchemy import create_engine, Column, Integer, String, MetaData, Table
-from sqlalchemy.orm import sessionmaker
-import re
+import pymongo
+import random
+import uuid
+from bs4 import BeautifulSoup
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-# --- Database Setup ---
-engine = create_engine('sqlite:///rankings.db', echo=False)
-metadata = MetaData()
+# --- MongoDB Setup ---
+MONGO_URI = st.secrets["MONGO"]["uri"]
+if not MONGO_URI:
+    st.error("MongoDB URI is not set in the environment variables.")
+    st.stop()  # Stop the app if MongoDB URI is missing
+client = pymongo.MongoClient(MONGO_URI)
+db = client["techcrunch_db"]  # Your MongoDB database
+collection = db["top_stories"]  # Your MongoDB collection
+rankings_collection = db["rankings"]  # MongoDB collection for rankings
+satisfaction_collection = db["satisfaction"]  # MongoDB collection for satisfaction
 
-rankings_table = Table('rankings', metadata,
-    Column('id', Integer, primary_key=True, autoincrement=True),
-    Column('item', String),
-    Column('rank', Integer),
-    Column('submission_id', String),
-    Column('user_name', String, nullable=True)
-)
+# --- Load Data from MongoDB ---
+def load_articles_from_mongodb(limit=5):
+    try:
+        articles = collection.find().limit(limit)
+        return list(articles)
+    except Exception as e:
+        st.error(f"Error loading articles from MongoDB: {e}")
+        return []
 
-satisfaction_table = Table('satisfaction', metadata,
-    Column('id', Integer, primary_key=True, autoincrement=True),
-    Column('submission_id', String),
-    Column('user_name', String, nullable=True),
-    Column('satisfaction_score', Integer)
-)
-
-metadata.create_all(engine)
-Session = sessionmaker(bind=engine)
-
-# --- Load JSON Data ---
-try:
-    with open("techcrunch_top_stories.json", "r", encoding="utf-8") as json_file:
-        articles_data = json.load(json_file)
-except Exception as e:
-    st.error(f"Failed to load JSON data: {e}")
-    articles_data = []
-
-# --- Select a subset of articles ---
-num_articles_to_show = min(5, len(articles_data))
-random_articles = random.sample(articles_data, num_articles_to_show) if articles_data else []
-
-# Function to clean HTML tags and ensure plain text
+# --- Function to clean HTML tags and ensure plain text ---
 def clean_html(raw_html):
     return BeautifulSoup(raw_html, "html.parser").get_text()
 
-# Function to remove unwanted text from the summary if a footer exists
+# --- Function to remove unwanted text from the summary if a footer exists ---
 def remove_footer_text(summary):
     index = summary.find("©")
     if index != -1:
         return summary[:index].rstrip()  # Remove footer and trailing whitespace
     return summary  # Return unchanged
 
-
-# Function to escape $ symbols for proper display
-#deperecated
-# def escape_dollars(text):
-#     return text.replace('$', '\\$')
-# def escape_dollars(text):
-#     return text.replace('$', '$')
 
 # --- Streamlit App ---
 st.title("Read My Sources - TechCrunch")
@@ -92,11 +73,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-
-
-
 # --- User Name Input ---
 user_name = st.text_input("Please enter your name:")
+
+# Load articles from MongoDB
+articles_data = load_articles_from_mongodb()
+
+# --- Select a subset of articles ---
+num_articles_to_show = min(5, len(articles_data))
+random_articles = random.sample(articles_data, num_articles_to_show) if articles_data else []
 
 # Store article content in session state if not already stored
 if "article_content" not in st.session_state:
@@ -172,6 +157,7 @@ if user_name:
             score = st.number_input('Score', min_value=-1, max_value=1, value=0, key=f'score_{i}_article')
 
 
+
     # --- Submit Rankings Button ---
     if st.button("Submit Scores"):
         submission_id = str(uuid.uuid4())
@@ -181,57 +167,52 @@ if user_name:
         for i, article in enumerate(random_articles):
             score = st.session_state.get(f'score_{i}_article')
             if score is not None:
-                rankings.append((article.get('title'), score))
+                rankings.append({
+                    "title": article.get('title'),
+                    "rank": score,
+                    "submission_id": submission_id,
+                    "user_name": user_name
+                })
 
-        # Removed uniqueness check for ranks
-        session = Session()
         try:
-            for title, rank_value in rankings:
-                new_ranking = rankings_table.insert().values(
-                    item=title, rank=rank_value, submission_id=submission_id, user_name=user_name
-                )
-                session.execute(new_ranking)
-            session.commit()
+            # Insert rankings into MongoDB
+            if rankings:
+                rankings_collection.insert_many(rankings)
             st.success("Your rankings have been saved!")
         except Exception as e:
-            session.rollback()
             st.error(f"Error saving rankings: {e}")
-        finally:
-            session.close()
 
 
     # Satisfaction Survey
     st.subheader("Satisfaction Survey")
     satisfaction_score = st.slider("Rate recommendations (1-10):", 1, 10, 5)
-    
+
     if st.button("Submit Satisfaction Score", key="satisfaction_button"):
         submission_id = str(uuid.uuid4())
-        session = Session()
         try:
-            new_satisfaction = satisfaction_table.insert().values(
-                submission_id=submission_id, user_name=user_name, satisfaction_score=satisfaction_score
-            )
-            session.execute(new_satisfaction)
-            session.commit()
+            # Insert satisfaction score into MongoDB
+            satisfaction_data = {
+                "submission_id": submission_id,
+                "user_name": user_name,
+                "satisfaction_score": satisfaction_score
+            }
+            satisfaction_collection.insert_one(satisfaction_data)
             st.success("Satisfaction score saved!")
         except Exception as e:
-            session.rollback()
-            st.error(f"Error saving score: {e}")
-        finally:
-            session.close()
+            st.error(f"Error saving satisfaction score: {e}")
+
 
     # Display Submitted Rankings
     if st.checkbox("Show submitted rankings"):
-        conn = sqlite3.connect('rankings.db')
         try:
-            df = pd.read_sql_query("SELECT * from rankings", conn)
-            st.dataframe(df[['submission_id', 'user_name', 'item', 'rank']])
+            # Fetch the rankings from MongoDB
+            rankings_data = list(rankings_collection.find())
+            df = pd.DataFrame(rankings_data)
+            st.dataframe(df[['submission_id', 'user_name', 'title', 'rank']])
         except Exception as e:
             st.error(f"Error loading rankings: {e}")
-        finally:
-            conn.close()
 
 elif user_name == "":
     pass
 else:
-    st.error("Please enter a valid name before proceeding.") 
+    st.error("Please enter a valid name before proceeding.")
