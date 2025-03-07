@@ -47,21 +47,20 @@ random_articles = random.sample(articles_data, num_articles_to_show) if articles
 def clean_html(raw_html):
     return BeautifulSoup(raw_html, "html.parser").get_text()
 
-# Function to remove unwanted text from the summary
+# Function to remove unwanted text from the summary if a footer exists
 def remove_footer_text(summary):
-    # Find the index of the "©" symbol and return only the part before it
     index = summary.find("©")
     if index != -1:
-        return summary[:index].strip()
-    return summary.strip()
+        return summary[:index].rstrip()  # Remove footer and trailing whitespace
+    return summary  # Return unchanged
 
 
 # Function to escape $ symbols for proper display
 #deperecated
 # def escape_dollars(text):
 #     return text.replace('$', '\\$')
-def escape_dollars(text):
-    return text.replace('$', '$')
+# def escape_dollars(text):
+#     return text.replace('$', '$')
 
 # --- Streamlit App ---
 st.title("Read My Sources - TechCrunch")
@@ -107,33 +106,37 @@ if "article_content" not in st.session_state:
     for article in random_articles:
         title = str(article.get("title", "Unknown Title"))
         raw_content = str(article.get("summary", "No summary available"))
-        content = clean_html(raw_content)[:150]  # Remove HTML tags and trim
-
-        # Remove footer text from the summary
-        content = remove_footer_text(content)
-
-        # Escape $ symbols in title and content
-        title = escape_dollars(title)
-        content = escape_dollars(content)
-
-        if len(content) == 150:
-            content += "..."
-
-        # Get the URL of the article
-        url = article.get("link", "#")  # Fallback to '#' if no URL is available
-
-        # Format the published date (if available)
+        
+        # Clean the full text
+        cleaned = clean_html(raw_content)
+        # Create the truncated version (first 150 characters)
+        truncated = cleaned[:150]
+        # Determine if truncation happened (full text longer than 150)
+        was_truncated = len(cleaned) > 150
+        
+        # Check if a footer appears in the truncated part
+        if "©" in truncated:
+            # Remove footer if present
+            content = remove_footer_text(truncated)
+            # Since footer text is removed, assume the content is complete (do not add ellipsis)
+        else:
+            # Remove any trailing whitespace
+            content = truncated.rstrip()
+            # If truncation occurred, append ellipsis
+            if was_truncated:
+                content += "..."
+        
+        # The rest of your code follows...
+        url = article.get("link", "#")
         raw_published_date = article.get("published", None)
         if raw_published_date:
-            formatted_date = raw_published_date[:16]  # Extracts "Thu, 06 Mar 2025"
+            formatted_date = raw_published_date[:16]
         else:
             formatted_date = "No publication date available"
 
-        # Get authors if available, otherwise show placeholder
         authors = article.get("authors", [])
         authors_text = ", ".join(authors) if authors else "No author information available"
 
-        # Store the formatted article content in session state with a link to the article
         article_content = f"""
         <a href="{url}" target="_blank">
             <div class="article-card">
@@ -144,8 +147,7 @@ if "article_content" not in st.session_state:
             </div>
         </a>
         """
-
-        # Append the article content to session state
+        
         st.session_state.article_content.append(article_content)
 
 
@@ -181,23 +183,22 @@ if user_name:
             if score is not None:
                 rankings.append((article.get('title'), score))
 
-        if len(set(rank for _, rank in rankings)) != len(rankings):
-            st.error("All ranks must be unique.")
-        else:
-            session = Session()
-            try:
-                for title, rank_value in rankings:
-                    new_ranking = rankings_table.insert().values(
-                        item=title, rank=rank_value, submission_id=submission_id, user_name=user_name
-                    )
-                    session.execute(new_ranking)
-                session.commit()
-                st.success("Your rankings have been saved!")
-            except Exception as e:
-                session.rollback()
-                st.error(f"Error saving rankings: {e}")
-            finally:
-                session.close()
+        # Removed uniqueness check for ranks
+        session = Session()
+        try:
+            for title, rank_value in rankings:
+                new_ranking = rankings_table.insert().values(
+                    item=title, rank=rank_value, submission_id=submission_id, user_name=user_name
+                )
+                session.execute(new_ranking)
+            session.commit()
+            st.success("Your rankings have been saved!")
+        except Exception as e:
+            session.rollback()
+            st.error(f"Error saving rankings: {e}")
+        finally:
+            session.close()
+
 
     # Satisfaction Survey
     st.subheader("Satisfaction Survey")
