@@ -7,9 +7,6 @@ import pymongo
 import random
 import uuid
 from bs4 import BeautifulSoup
-import os
-from dotenv import load_dotenv
-load_dotenv()
 
 # --- MongoDB Setup ---
 MONGO_URI = st.secrets["MONGO"]["uri"]
