@@ -66,6 +66,36 @@ def escape_dollars(text):
 # --- Streamlit App ---
 st.title("Read My Sources - TechCrunch")
 
+# --- Inject Custom CSS ---
+st.markdown("""
+    <style>
+        .article-card {
+            background-color: #333333 !important;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            color: white;
+            transition: transform 0.2s ease-in-out;
+        }
+        .article-card:hover {
+            transform: scale(1.03);
+        }
+        a {
+            text-decoration: none !important; /* Remove underline by default */
+            color: inherit;
+        }
+        a:hover {
+            text-decoration: underline !important; /* Add underline on hover */
+            text-decoration-color: blue !important; /* Make the underline blue */
+            text-underline-offset: 3px; /* Adjust spacing between text and underline */
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+
+
+
 # --- User Name Input ---
 user_name = st.text_input("Please enter your name:")
 
@@ -73,9 +103,10 @@ user_name = st.text_input("Please enter your name:")
 if "article_content" not in st.session_state:
     # Clean and format the articles only once
     st.session_state.article_content = []
+    # Loop through each article and store formatted content
     for article in random_articles:
-        title = str(article.get("title", "Unknown Title"))  # Ensure title is a plain string
-        raw_content = str(article.get("summary", "No summary available"))  # Ensure summary is a plain string
+        title = str(article.get("title", "Unknown Title"))
+        raw_content = str(article.get("summary", "No summary available"))
         content = clean_html(raw_content)[:150]  # Remove HTML tags and trim
 
         # Remove footer text from the summary
@@ -84,21 +115,32 @@ if "article_content" not in st.session_state:
         # Escape $ symbols in title and content
         title = escape_dollars(title)
         content = escape_dollars(content)
-        #add the ... if the text got truncated
+
         if len(content) == 150:
             content += "..."
 
         # Get the URL of the article
         url = article.get("link", "#")  # Fallback to '#' if no URL is available
 
-        # Store the formatted article content in session state with a link to the article
-        # Store the formatted article content in session state with a link to the article
+        # Format the published date (if available)
+        raw_published_date = article.get("published", None)
+        if raw_published_date:
+            formatted_date = raw_published_date[:16]  # Extracts "Thu, 06 Mar 2025"
+        else:
+            formatted_date = "No publication date available"
+
+        # Get authors if available, otherwise show placeholder
+        authors = article.get("authors", [])
+        authors_text = ", ".join(authors) if authors else "No author information available"
+
         # Store the formatted article content in session state with a link to the article
         article_content = f"""
-        <a href="{url}" target="_blank" style="text-decoration: none; color: inherit;">
-            <div style="background-color: #333333; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); color: white;">
+        <a href="{url}" target="_blank">
+            <div class="article-card">
                 <h3 style="font-size: 20px; font-weight: bold;">{title}</h3>
                 <p style="font-size: 16px; color: inherit;">{content}</p>
+                <p style="font-size: 14px; color: #bbbbbb;">Published: {formatted_date}</p>
+                <p style="font-size: 14px; color: #bbbbbb;">Authors: {authors_text}</p>
             </div>
         </a>
         """
@@ -106,15 +148,6 @@ if "article_content" not in st.session_state:
         # Append the article content to session state
         st.session_state.article_content.append(article_content)
 
-        # Inject the hover effect CSS directly into the app
-        st.markdown("""
-            <style>
-                a:hover {
-                    color: blue !important;
-                    text-decoration: underline !important;
-                }
-            </style>
-        """, unsafe_allow_html=True)
 
 if user_name:
     if not random_articles:
