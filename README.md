@@ -1,1 +1,1 @@
-streamlit app to collect ranking datasets for use at Hivelighter
+streamlit app for read my sources testing environment

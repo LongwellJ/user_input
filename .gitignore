@@ -18,3 +18,4 @@ techcrunch_top_stories_backup.json
 mongo_drop_dbs.py
 .streamlit/secrets.toml
 app_legacy.py
+get_language_lens.py

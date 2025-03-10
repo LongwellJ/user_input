@@ -19,14 +19,15 @@ collection = db["top_stories"]  # Your MongoDB collection
 rankings_collection = db["rankings"]  # MongoDB collection for rankings
 satisfaction_collection = db["satisfaction"]  # MongoDB collection for satisfaction
 
-# --- Load Data from MongoDB ---
+# --- Load Data from MongoDB randomly---
 def load_articles_from_mongodb(limit=5):
     try:
-        articles = collection.find().limit(limit)
+        articles = collection.aggregate([{"$sample": {"size": limit}}])  # Randomly select 'limit' articles
         return list(articles)
     except Exception as e:
         st.error(f"Error loading articles from MongoDB: {e}")
         return []
+
 
 # --- Function to clean HTML tags and ensure plain text ---
 def clean_html(raw_html):
@@ -73,6 +74,9 @@ st.markdown("""
 # --- User Name Input ---
 user_name = st.text_input("Please enter your name:")
 
+if "article_content" in st.session_state:
+    del st.session_state["article_content"]
+
 # Load articles from MongoDB
 articles_data = load_articles_from_mongodb()
 
@@ -85,10 +89,16 @@ if "article_content" not in st.session_state:
     # Clean and format the articles only once
     st.session_state.article_content = []
     # Loop through each article and store formatted content
+
     for article in random_articles:
+        
+        
         title = str(article.get("title", "Unknown Title"))
         raw_content = str(article.get("summary", "No summary available"))
-        
+        ###
+
+        # All of this should be done before storing the data in the database
+
         # Clean the full text
         cleaned = clean_html(raw_content)
         # Create the truncated version (first 150 characters)
@@ -107,8 +117,8 @@ if "article_content" not in st.session_state:
             # If truncation occurred, append ellipsis
             if was_truncated:
                 content += "..."
+        ###    
         
-        # The rest of your code follows...
         url = article.get("link", "#")
         raw_published_date = article.get("published", None)
         if raw_published_date:
