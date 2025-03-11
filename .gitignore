@@ -19,3 +19,8 @@ mongo_drop_dbs.py
 .streamlit/secrets.toml
 app_legacy.py
 get_language_lens.py
+output.txt
+responses.json
+redo_errors.py
+tech_articles_content.json
+techcrunch_top_stories_copy.json
