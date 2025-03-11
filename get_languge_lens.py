@@ -350,10 +350,10 @@ for i, story in enumerate(tqdm(techcrunch_data, desc="Processing stories", unit=
         tqdm.write("Waiting 30 seconds before the next request...")
         time.sleep(30)
 
-
 def update_stories_with_model_response(responses):
     """
     Updates existing MongoDB documents by adding the 'model_response' and 'numeric_response' fields based on the story 'link'.
+    If 'numeric_response' is missing, it will be generated from 'model_response["content"][0]["text"]'.
     """
     # Connect to MongoDB
     MONGO_URI = os.getenv("MONGODB_URI")
@@ -368,10 +368,40 @@ def update_stories_with_model_response(responses):
         model_response = response.get("model_response")
         numeric_response = response.get("numeric_response")
 
-
+        # If model_response is available, attempt to map it to numeric_response if missing
         if not link or not model_response:
             print(f"Skipping response update: Missing link or model_response.")
             continue
+
+        # If numeric_response is missing, generate it from model_response["content"][0]["text"]
+        if not numeric_response:
+            try:
+                # Extract the text content from model_response
+                content = model_response.get("content", [])
+                
+                if content and isinstance(content, list):
+                    text_content = content[0].get("text", None)
+
+                    if text_content:
+                        print(f"Processing text for link {link}.")
+                        # Assuming the text is in the form of a JSON string, parse it into a dictionary
+                        parsed_analysis = json.loads(text_content)
+
+                        # Apply the value_mapping to parsed_analysis
+                        numeric_response = {
+                            key: value_mapping.get(value, None)
+                            for key, value in parsed_analysis.items()
+                        }
+                    else:
+                        print(f"No text content found for link {link}. Skipping numeric response generation.")
+                        continue
+                else:
+                    print(f"Invalid content structure for link {link}. Skipping.")
+                    continue
+
+            except Exception as e:
+                print(f"Error processing model_response for link {link}: {e}")
+                continue
 
         # Find the document with the matching link
         existing_story = collection.find_one({"link": link})
@@ -389,9 +419,9 @@ def update_stories_with_model_response(responses):
         else:
             print(f"No matching story found for link {link}. Skipping update.")
 
-
     print(f"Updated {updated_count} stories with model responses in MongoDB.")
 
-update_stories_with_model_response(responses)       
+# Call the function to update stories with model responses and numeric responses
+update_stories_with_model_response(responses)
 
 print(f"\nAll responses saved to {output_file}")

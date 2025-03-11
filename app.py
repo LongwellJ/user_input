@@ -68,6 +68,12 @@ st.markdown("""
             text-decoration-color: blue !important; /* Make the underline blue */
             text-underline-offset: 3px; /* Adjust spacing between text and underline */
         }
+        .inline-info {
+            font-size: 14px;
+            color: #bbbbbb;
+            display: inline-block;
+            margin-right: 15px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -128,16 +134,18 @@ if "article_content" not in st.session_state:
 
         authors = article.get("authors", [])
         authors_text = ", ".join(authors) if authors else "No author information available"
+        duration = article.get("duration", None)
 
         article_content = f"""
-        <a href="{url}" target="_blank">
-            <div class="article-card">
-                <h3 style="font-size: 20px; font-weight: bold;">{title}</h3>
-                <p style="font-size: 16px; color: inherit;">{content}</p>
-                <p style="font-size: 14px; color: #bbbbbb;">Published: {formatted_date}</p>
-                <p style="font-size: 14px; color: #bbbbbb;">Authors: {authors_text}</p>
-            </div>
-        </a>
+            <a href="{url}" target="_blank">
+                <div class="article-card">
+                    <h3 style="font-size: 20px; font-weight: bold;">{title}</h3>
+                    <p style="font-size: 16px; color: inherit;">{content}</p>
+                    <p class="inline-info">Published: {formatted_date},</p>
+                    <p class="inline-info">Authors: {authors_text},</p>
+                    <p class="inline-info">Duration: {duration}</p>
+                </div>
+            </a>
         """
         
         st.session_state.article_content.append(article_content)
