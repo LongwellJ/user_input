@@ -44,7 +44,6 @@ def remove_footer_text(summary):
 # --- Streamlit App ---
 st.title("Read My Sources - TechCrunch")
 
-# --- Inject Custom CSS ---
 st.markdown("""
     <style>
         .article-card {
@@ -56,6 +55,9 @@ st.markdown("""
             color: white;
             transition: transform 0.2s ease-in-out;
         }
+        .inline-info span {
+            color: #ffffff; /* Set text color to white to make it more prominent */
+        }    
         .article-card:hover {
             transform: scale(1.03);
         }
@@ -70,12 +72,14 @@ st.markdown("""
         }
         .inline-info {
             font-size: 14px;
-            color: #bbbbbb;
+            color: #dddddd;
             display: inline-block;
             margin-right: 15px;
+            font-weight: bold; /* Make text stand out more */
         }
     </style>
 """, unsafe_allow_html=True)
+
 
 # --- User Name Input ---
 user_name = st.text_input("Please enter your name:")
@@ -136,14 +140,15 @@ if "article_content" not in st.session_state:
         authors_text = ", ".join(authors) if authors else "No author information available"
         duration = article.get("duration", None)
 
+        # Example of the article content with the new inline styling
         article_content = f"""
             <a href="{url}" target="_blank">
                 <div class="article-card">
                     <h3 style="font-size: 20px; font-weight: bold;">{title}</h3>
                     <p style="font-size: 16px; color: inherit;">{content}</p>
-                    <p class="inline-info">Published: {formatted_date},</p>
-                    <p class="inline-info">Authors: {authors_text},</p>
-                    <p class="inline-info">Duration: {duration}</p>
+                    <p class="inline-info"><span>Published:</span> {formatted_date}</p>
+                    <p class="inline-info"><span>Author(s):</span> {authors_text}</p>
+                    <p class="inline-info"><span>Duration:</span> {duration}</p>
                 </div>
             </a>
         """
