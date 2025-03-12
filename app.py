@@ -11,7 +11,7 @@ if not MONGO_URI:
     st.stop()  # Stop the app if MongoDB URI is missing
 client = pymongo.MongoClient(MONGO_URI)
 db = client["techcrunch_db"]  # Your MongoDB database
-collection = db["Balanced Evaluator"]  # Your MongoDB collection
+collection = db["Critical Thinker"]  # Your MongoDB collection
 rankings_collection = db["rankings"]  # MongoDB collection for rankings
 satisfaction_collection = db["satisfaction"]  # MongoDB collection for satisfaction
 

@@ -347,8 +347,8 @@ for i, story in enumerate(tqdm(techcrunch_data, desc="Processing stories", unit=
 
     # Enforce a 30-second delay between API calls
     if i < len(techcrunch_data) - 1:  # Avoid unnecessary sleep after the last request
-        tqdm.write("Waiting 30 seconds before the next request...")
-        time.sleep(30)
+        tqdm.write("Waiting 5 seconds before the next request...")
+        time.sleep(5)
 
 def update_stories_with_model_response(responses):
     """
