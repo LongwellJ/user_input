@@ -24,4 +24,5 @@ redo_errors.py
 tech_articles_content.json
 techcrunch_top_stories_copy.json
 create_rankings.py
-get_language_lens.py
+get_languge_lens.py
+__pycache__
