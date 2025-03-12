@@ -220,9 +220,14 @@ else:
     # --- Invalid Username Branch ---
     st.error("Invalid username")
     st.write("Displaying 5 random articles for exploration:")
-    random_articles = load_random_articles(limit=5)
+
+    # Persist random articles in session state to prevent them from refreshing on every rerun
+    if "random_articles" not in st.session_state:
+        st.session_state["random_articles"] = load_random_articles(limit=5)
+    random_articles = st.session_state["random_articles"]
+
     random_article_contents = [format_article(article) for article in random_articles]
-    
+
     st.title("Articles")
     st.write("Assign a score to each item (1 = Strong Accept, 0 = Weak Accept, -1 = Reject):")
     for i, article_html in enumerate(random_article_contents):
@@ -233,7 +238,7 @@ else:
             score = st.number_input('Score', min_value=-1, max_value=1, value=0, key=f'random_score_{i}_article')
         if score == -1:
             st.text_area("Additional Feedback:", key=f'random_feedback_{i}_article')
-    
+
     if st.button("Submit Scores", key="random_submit_scores"):
         submission_id = str(uuid.uuid4())
         rankings = []
@@ -255,7 +260,7 @@ else:
             st.success("Your rankings have been saved!")
         except Exception as e:
             st.error(f"Error saving rankings: {e}")
-    
+
     st.subheader("Satisfaction Survey")
     satisfaction_score = st.slider("Rate recommendations (1-10):", 1, 10, 5)
     if st.button("Submit Satisfaction Score", key="random_satisfaction_button"):
@@ -270,7 +275,7 @@ else:
             st.success("Satisfaction score saved!")
         except Exception as e:
             st.error(f"Error saving satisfaction score: {e}")
-    
+
     if st.checkbox("Show submitted rankings", key="random_show_submitted"):
         try:
             rankings_data = list(rankings_collection.find())
