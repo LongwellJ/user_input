@@ -158,7 +158,7 @@ def main():
     load_css()   
     st.header("Welcome to Read My Sources")
     st.write("Please enter your username to access the articles.") 
-    print(st.session_state)
+    # print(st.session_state)
     user_name = st.text_input("Enter your username:", value=st.session_state.user_name)
     
     # Admin panel for user management
