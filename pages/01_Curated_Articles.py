@@ -17,6 +17,7 @@ if not st.session_state.get("is_valid_user", False) or not authenticate_user(st.
 # --- Determine the Collection Based on User's Persona ---
 # Get the user's profile from the users collection
 user_data = users_collection.find_one({"username": st.session_state.user_name})
+# print(st.session_state)
 # Default to "Critical Thinker" if no persona is found
 persona = user_data.get("persona", "Critical Thinker")
 
@@ -31,7 +32,7 @@ elif persona == "Balanced Evaluator":
     selected_collection = db["Balanced Evaluator"]
 else:
     selected_collection = db["Critical Thinker"]
-
+# print(selected_collection)
 # --- Initialize session state variables for articles if not already done ---
 if "articles_data" not in st.session_state:
     st.session_state.articles_data = load_articles_from_mongodb(offset=0, limit=5, collection=selected_collection)

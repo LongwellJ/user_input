@@ -97,6 +97,7 @@ def load_articles_from_mongodb(offset=0, limit=5, collection=None):
 
 def load_random_articles(limit=5):
     try:
+
         random_articles = list(top_stories.aggregate([{"$sample": {"size": limit}}]))
         return random_articles
     except Exception as e:
@@ -144,19 +145,20 @@ def load_css():
 # --- Initialize Session State ---
 if "user_name" not in st.session_state:
     st.session_state.user_name = ""
-if "is_valid_user" not in st.session_state:
-    st.session_state.is_valid_user = False
 if "needs_initialization" not in st.session_state:
     st.session_state.needs_initialization = False
-
+# if "random_article_contents" in st.session_state:
+#     st.session_state.random_article_contents = []
+# if "articles_data" in st.session_state:
+#     st.session_state.articles_data = []
+        
 # --- Home Page (User Form) ---
 def main():
-    st.title("Read My Sources - TechCrunch")
-    load_css()
-    
-    st.header("Welcome to TechCrunch Article Reviewer")
-    st.write("Please enter your username to access the articles.")
-    
+    st.title("Read My Sources")
+    load_css()   
+    st.header("Welcome to Read My Sources")
+    st.write("Please enter your username to access the articles.") 
+    print(st.session_state)
     user_name = st.text_input("Enter your username:", value=st.session_state.user_name)
     
     # Admin panel for user management
@@ -206,11 +208,10 @@ def main():
     
     if st.button("Login"):
         st.session_state.user_name = user_name
-        
         # Check if user exists in the MongoDB collection
         if authenticate_user(user_name):
             st.session_state.is_valid_user = True
-            
+    
             # Check if the user has a persona
             if check_user_initialized(user_name):
                 st.success(f"Welcome back, {user_name}! You can now access the curated articles.")
@@ -223,6 +224,14 @@ def main():
             st.session_state.is_valid_user = False
             st.warning("Invalid username. You can still view random articles.")
             st.write("Please use the navigation to view random articles.")
+
+    if st.button("logout"):
+        for key in st.session_state.keys():
+            del st.session_state[key]
+    
+        st.warning("Logged out")
+ 
+       
 
 if __name__ == "__main__":
     main()
