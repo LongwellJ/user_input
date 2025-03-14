@@ -3,8 +3,7 @@ import pandas as pd
 import uuid
 from bs4 import BeautifulSoup
 import pymongo
-from google_analytics import inject_ga
-inject_ga()
+
 
 # --- MongoDB Setup ---
 MONGO_URI = st.secrets["MONGO"]["uri"]
@@ -64,7 +63,7 @@ def format_article(article):
     url = article.get("link", "#")
     raw_published_date = article.get("published", None)
     if raw_published_date:
-        formatted_date = raw_published_date[:16]
+        formatted_date = raw_published_date
     else:
         formatted_date = "No publication date available"
 

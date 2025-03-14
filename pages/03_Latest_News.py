@@ -3,10 +3,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from Login import client, db, format_article, load_css
-from google_analytics import inject_ga
 
-# Inject Google Analytics
-inject_ga()
 # Load CSS
 load_css()
 

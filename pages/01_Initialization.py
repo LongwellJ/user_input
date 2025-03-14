@@ -4,10 +4,6 @@ from Login import (
     client, db, users_collection, format_article, load_css, 
     authenticate_user
 )
-from google_analytics import inject_ga
-
-# Inject Google Analytics
-inject_ga()
 
 # Load CSS and set title
 load_css()
