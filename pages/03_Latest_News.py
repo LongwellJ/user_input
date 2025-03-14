@@ -46,7 +46,7 @@ else:
     for article in st.session_state.latest_articles:
         if article.get("published"):
             # Extract just the date part (first 10 characters: YYYY-MM-DD)
-            date_str = article.get("published")[:10]
+            date_str = article.get("published")
             all_dates.append(date_str)
     
     # Get unique dates
