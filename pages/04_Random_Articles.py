@@ -33,7 +33,7 @@ for i, article_html in enumerate(st.session_state.random_article_contents):
 
 if st.button("Submit Scores", key="random_submit_scores"):
     if not st.session_state.get("user_name"):
-        st.error("Please enter your name on the home page before submitting scores.")
+        st.error("Please validate your name on the Login page before submitting scores.")
     else:
         submission_id = str(uuid.uuid4())
         rankings = []
@@ -78,7 +78,7 @@ comments = st.text_area("Additional comments (optional):", key="random_comments"
 
 if st.button("Submit Satisfaction Score", key="random_satisfaction_button"):
     if not st.session_state.get("user_name"):
-        st.error("Please enter your name on the home page before submitting a satisfaction score.")
+        st.error("Please validate your name on the Login page before submitting scores.")
     else:
         submission_id = str(uuid.uuid4())
         try:
