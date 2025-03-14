@@ -3,9 +3,11 @@ import streamlit as st
 import pandas as pd
 import uuid
 from Login import client, rankings_collection, satisfaction_collection, format_article, load_random_articles, load_css
+import streamlit_analytics
 
 # Load CSS
 load_css()
+streamlit_analytics.start_tracking()
 
 st.title("Random Articles")
 
@@ -91,3 +93,5 @@ if st.button("Submit Satisfaction Score", key="random_satisfaction_button"):
             st.success("Thank you! Your satisfaction score and comments have been saved.")
         except Exception as e:
             st.error(f"Error saving satisfaction score: {e}")
+
+streamlit_analytics.stop_tracking()

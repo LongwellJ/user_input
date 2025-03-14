@@ -3,10 +3,10 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from Login import client, db, format_article, load_css
-
+import streamlit_analytics
 # Load CSS
 load_css()
-
+streamlit_analytics.start_tracking()
 st.title("Latest News")
 
 # --- Load Latest Articles from top_stories collection ---
@@ -79,3 +79,4 @@ if st.sidebar.button("Load More Articles"):
         st.rerun()
     else:
         st.sidebar.warning("No more articles available.")
+streamlit_analytics.stop_tracking()

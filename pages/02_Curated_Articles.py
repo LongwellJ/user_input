@@ -2,10 +2,11 @@ import streamlit as st
 import pandas as pd
 import uuid
 from Login import client, db, users_collection, rankings_collection, satisfaction_collection, format_article, load_articles_from_mongodb, load_css, authenticate_user
+import streamlit_analytics
 
 # Load CSS
 load_css()
-
+streamlit_analytics.start_tracking()
 st.title("Curated Articles")
 
 # Check if user is valid using MongoDB authentication
@@ -124,3 +125,4 @@ if st.button("Submit Satisfaction Score", key="curated_satisfaction_button"):
         st.success("Thank you! Your satisfaction score and comments have been saved.")
     except Exception as e:
         st.error(f"Error saving satisfaction score: {e}")
+streamlit_analytics.stop_tracking()

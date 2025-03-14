@@ -3,28 +3,8 @@ import pandas as pd
 import uuid
 from bs4 import BeautifulSoup
 import pymongo
+import streamlit_analytics
 
-def inject_gtm():
-    GTM_ID = "GTM-TR2F54JP"  # Replace with your actual GTM ID
-
-    # Inject the GTM <script> into the head
-    st.markdown(f"""
-        <script>
-        (function(w,d,s,l,i){{w[l]=w[l]||[];w[l].push({{'gtm.start':
-        new Date().getTime(),event:'gtm.js'}});var f=d.getElementsByTagName(s)[0],
-        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-        }})(window,document,'script','dataLayer','{GTM_ID}');
-        </script>
-    """, unsafe_allow_html=True)
-
-    # Inject the GTM <noscript> tag into the body
-    st.markdown(f"""
-        <noscript>
-            <iframe src="https://www.googletagmanager.com/ns.html?id={GTM_ID}"
-            height="0" width="0" style="display:none;visibility:hidden"></iframe>
-        </noscript>
-    """, unsafe_allow_html=True)
 # --- MongoDB Setup ---
 MONGO_URI = st.secrets["MONGO"]["uri"]
 if not MONGO_URI:
@@ -175,7 +155,8 @@ if "needs_initialization" not in st.session_state:
         
 # --- Home Page (User Form) ---
 def main():
-    inject_gtm()  # Inject GTM
+    streamlit_analytics.start_tracking()
+
     st.title("Read My Sources")
     load_css()   
     st.header("Welcome to Read My Sources")
@@ -252,6 +233,8 @@ def main():
             del st.session_state[key]
     
         st.warning("Logged out")
+streamlit_analytics.stop_tracking()
+
  
        
 
