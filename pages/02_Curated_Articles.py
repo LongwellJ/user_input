@@ -2,7 +2,10 @@ import streamlit as st
 import pandas as pd
 import uuid
 from Login import client, db, users_collection, rankings_collection, satisfaction_collection, format_article, load_articles_from_mongodb, load_css, authenticate_user
+from google_analytics import inject_ga
 
+# Inject Google Analytics
+inject_ga()
 # Load CSS
 load_css()
 
