@@ -2,8 +2,10 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from Login import client, db, format_article, load_css
+from Login import client, db, format_article, load_css, rankings_collection, satisfaction_collection
 import streamlit_analytics
+import uuid
+
 # Load CSS
 load_css()
 streamlit_analytics.start_tracking()
@@ -39,33 +41,70 @@ if st.sidebar.button("Refresh Latest News"):
 if not st.session_state.latest_articles:
     st.error("No articles available to display.")
 else:
-    st.write("Browse the latest news articles:")
-    
-    # Create a date filter
-    all_dates = []
-    for article in st.session_state.latest_articles:
-        if article.get("published"):
-            # Extract just the date part (first 10 characters: YYYY-MM-DD)
-            date_str = article.get("published")
-            all_dates.append(date_str)
-    
-    # Get unique dates
-    unique_dates = sorted(set(all_dates), reverse=True)
-    
-    
-    # Display articles
-    articles_displayed = 0
-    for i, article in enumerate(st.session_state.latest_articles):
-        # Check if article should be displayed based on date filter
-        show_article = True
-        if show_article:
-            st.markdown(st.session_state.latest_article_contents[i], unsafe_allow_html=True)
-            articles_displayed += 1
-    
-    if articles_displayed == 0:
-        st.info("No articles to display.")
+    st.write("Assign a score to each item (1 = Strong Accept, 0 = Weak Accept, -1 = Reject):")
 
-# Add pagination controls
+    # Display articles with score input
+    for i, article in enumerate(st.session_state.latest_articles):
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown(st.session_state.latest_article_contents[i], unsafe_allow_html=True)
+        
+        # Add score input for each article
+        with col2:
+            score = st.number_input('Score this article', min_value=-1, max_value=1, value=0, key=f'score_{i}_article')
+
+        # If score is -1, allow feedback
+        if score == -1:
+            feedback = st.text_area(f"Additional Feedback for '{article['title']}'", key=f'feedback_{i}_article')
+
+# --- Submit Rankings Button ---
+if st.button("Submit Scores"):
+    submission_id = str(uuid.uuid4())
+    rankings = []
+    for i, article in enumerate(st.session_state.latest_articles):
+        score = st.session_state.get(f'score_{i}_article')
+        ranking_data = {
+            "title": article.get("title"),
+            "rank": score,
+            "submission_id": submission_id,
+            "user_name": st.session_state.user_name
+        }
+        if score == -1:
+            feedback = st.session_state.get(f'feedback_{i}_article', '')
+            ranking_data["feedback"] = feedback
+        rankings.append(ranking_data)
+    
+    try:
+        if rankings:
+            rankings_collection.insert_many(rankings)
+        st.success("Your rankings have been saved!")
+    except Exception as e:
+        st.error(f"Error saving rankings: {e}")
+
+# --- Satisfaction Survey (Integrated) ---
+st.markdown("---")
+st.subheader("Satisfaction Survey")
+st.write("Please rate your experience with these article recommendations.")
+
+satisfaction_score = st.slider("Rate recommendations (1-10):", 1, 10, 5, key="latest_news_satisfaction")
+comments = st.text_area("Additional comments (optional):", key="latest_news_comments")
+
+if st.button("Submit Satisfaction Score", key="latest_news_satisfaction_button"):
+    submission_id = str(uuid.uuid4())
+    try:
+        satisfaction_data = {
+            "submission_id": submission_id,
+            "user_name": st.session_state.user_name,
+            "satisfaction_score": satisfaction_score,
+            "comments": comments,
+            "page": "latest_news"
+        }
+        satisfaction_collection.insert_one(satisfaction_data)
+        st.success("Thank you! Your satisfaction score and comments have been saved.")
+    except Exception as e:
+        st.error(f"Error saving satisfaction score: {e}")
+
+# --- Pagination for Articles ---
 st.sidebar.markdown("---")
 articles_per_page = st.sidebar.slider("Articles per load:", 5, 20, 10)
 
@@ -79,4 +118,5 @@ if st.sidebar.button("Load More Articles"):
         st.rerun()
     else:
         st.sidebar.warning("No more articles available.")
+        
 streamlit_analytics.stop_tracking()

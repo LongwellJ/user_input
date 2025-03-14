@@ -155,15 +155,42 @@ if "needs_initialization" not in st.session_state:
         
 # --- Home Page (User Form) ---
 def main():
-    streamlit_analytics.start_tracking()
 
     st.title("Read My Sources")
     load_css()   
-    st.header("Welcome to Read My Sources")
-    st.write("Please enter your username to access the articles.") 
+    # st.header("Welcome to Read My Sources")
+    # st.write("Please enter your username to access the articles.") 
     # print(st.session_state)
     user_name = st.text_input("Enter your username:", value=st.session_state.user_name)
-    
+    # Create two columns
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Login"):
+            st.session_state.user_name = user_name
+            # Check if user exists in the MongoDB collection
+            if authenticate_user(user_name):
+                st.session_state.is_valid_user = True
+        
+                # Check if the user has a persona
+                if check_user_initialized(user_name):
+                    st.success(f"Welcome back, {user_name}! You can now access the curated articles.")
+                    st.write("Please use the navigation to view articles.")
+                else:
+                    st.session_state.needs_initialization = True
+                    st.warning(f"Welcome, {user_name}! You need to complete a quick initialization process.")
+                    st.write("Please go to the Initialization page in the navigation menu.")
+            else:
+                st.session_state.is_valid_user = False
+                st.warning("Invalid username. You can still view random articles.")
+                st.write("Please use the navigation to view random articles.")
+
+    with col2:
+        if st.button("Logout"):
+            for key in st.session_state.keys():
+                del st.session_state[key]
+            st.warning("Logged out")
+            
     # Admin panel for user management
     with st.expander("Admin Panel"):
         st.write("Add a new user to the system:")
@@ -208,34 +235,6 @@ def main():
                     st.error(f"Username '{delete_username}' does not exist!")
             else:
                 st.error("Please enter a username to delete.")
-    
-    if st.button("Login"):
-        st.session_state.user_name = user_name
-        # Check if user exists in the MongoDB collection
-        if authenticate_user(user_name):
-            st.session_state.is_valid_user = True
-    
-            # Check if the user has a persona
-            if check_user_initialized(user_name):
-                st.success(f"Welcome back, {user_name}! You can now access the curated articles.")
-                st.write("Please use the navigation to view articles.")
-            else:
-                st.session_state.needs_initialization = True
-                st.warning(f"Welcome, {user_name}! You need to complete a quick initialization process.")
-                st.write("Please go to the Initialization page in the navigation menu.")
-        else:
-            st.session_state.is_valid_user = False
-            st.warning("Invalid username. You can still view random articles.")
-            st.write("Please use the navigation to view random articles.")
-
-    if st.button("logout"):
-        for key in st.session_state.keys():
-            del st.session_state[key]
-    
-        st.warning("Logged out")
-streamlit_analytics.stop_tracking()
-
- 
        
 
 if __name__ == "__main__":
