@@ -31,8 +31,11 @@ elif persona == "Critical Thinker":
     selected_collection = db["Critical Thinker"]
 elif persona == "Balanced Evaluator":
     selected_collection = db["Balanced Evaluator"]
-else:
-    selected_collection = db["Critical Thinker"]
+elif persona == "Other":
+    selected_collection = db["Other"]
+else: 
+    selected_collection = db["Engaging Storyteller"]
+
 # print(selected_collection)
 # --- Initialize session state variables for articles if not already done ---
 if "articles_data" not in st.session_state:

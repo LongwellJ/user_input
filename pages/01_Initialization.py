@@ -64,7 +64,8 @@ if st.session_state.initialization_complete:
         0: "Data-Driven Analyst",
         1: "Engaging Storyteller",
         2: "Critical Thinker",
-        3: "Balanced Evaluator"
+        3: "Balanced Evaluator",
+        4: "Other"
     }
     persona = persona_map.get(final_index, "Unknown Persona")
     users_collection.update_one(
@@ -105,7 +106,7 @@ col_btn1, col_btn2 = st.columns([1, 1])
 def update_doc2_callback():
     st.session_state.last_button = "A"
     # If we haven't yet shown the 4th document, update Document 2
-    if st.session_state.next_doc_index < 4:
+    if st.session_state.next_doc_index < 5:
         st.session_state.doc2_index = st.session_state.next_doc_index
         st.session_state.next_doc_index += 1
     else:
@@ -115,7 +116,7 @@ def update_doc2_callback():
 # Callback for Button B ("Select Document 2"): replaces Document 1
 def update_doc1_callback():
     st.session_state.last_button = "B"
-    if st.session_state.next_doc_index < 4:
+    if st.session_state.next_doc_index < 5:
         st.session_state.doc1_index = st.session_state.next_doc_index
         st.session_state.next_doc_index += 1
     else:

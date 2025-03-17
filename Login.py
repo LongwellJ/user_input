@@ -11,12 +11,12 @@ if not MONGO_URI:
     st.error("MongoDB URI is not set in the environment variables.")
     st.stop()  # Stop the app if MongoDB URI is missing
 client = pymongo.MongoClient(MONGO_URI)
-db = client["techcrunch_db"]  # Your MongoDB database
-collection0 = db["Data-Driven Analyst"]  # Your MongoDB collection
-collection1 = db["Engaging Storyteller"]  # Your MongoDB collection
-collection2 = db["Critical Thinker"]
-collection3 = db["Balanced Evaluator"]
-collection4 = db["Other"]
+db = client["techcrunch_db"]
+# collection0 = db["Data-Driven Analyst"]
+# collection1 = db["Engaging Storyteller"]
+# collection2 = db["Critical Thinker"]
+# collection3 = db["Balanced Evaluator"]
+# collection4 = db["Other"]
 top_stories = db["top_stories"]
 rankings_collection = db["rankings"]  # MongoDB collection for rankings
 satisfaction_collection = db["satisfaction"]  # MongoDB collection for satisfaction
