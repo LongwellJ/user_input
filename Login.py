@@ -16,6 +16,7 @@ collection0 = db["Data-Driven Analyst"]  # Your MongoDB collection
 collection1 = db["Engaging Storyteller"]  # Your MongoDB collection
 collection2 = db["Critical Thinker"]
 collection3 = db["Balanced Evaluator"]
+collection4 = db["Other"]
 top_stories = db["top_stories"]
 rankings_collection = db["rankings"]  # MongoDB collection for rankings
 satisfaction_collection = db["satisfaction"]  # MongoDB collection for satisfaction
@@ -70,15 +71,29 @@ def format_article(article):
     authors = article.get("authors", [])
     authors_text = ", ".join(authors) if authors else "No author information available"
     duration = article.get("duration", None)
-
-    article_html = f"""
+    distance = article.get("distance", "N/A")
+    if distance == "N/A":
+        article_html = f"""
+            <a href="{url}" target="_blank">
+                <div class="article-card">
+                    <h3 style="font-size: 20px; font-weight: bold;">{title}</h3>
+                    <p style="font-size: 16px; color: inherit;">{content}</p>
+                    <p class="inline-info"><span>Published:</span> {formatted_date},</p>
+                    <p class="inline-info"><span>Author(s):</span> {authors_text},</p>
+                    <p class="inline-info"><span>Duration:</span> {duration}</p>
+                </div>
+            </a>
+        """
+    else:
+            article_html = f"""
         <a href="{url}" target="_blank">
             <div class="article-card">
                 <h3 style="font-size: 20px; font-weight: bold;">{title}</h3>
-                <p style="font-size: 16px; color: inherit;">{content}</p>
+                <p style="font-size: 16px; color: inherit;">{truncated}</p>
                 <p class="inline-info"><span>Published:</span> {formatted_date},</p>
                 <p class="inline-info"><span>Author(s):</span> {authors_text},</p>
-                <p class="inline-info"><span>Duration:</span> {duration}</p>
+                <p class="inline-info"><span>Duration:</span> {duration},</p>
+                <p class="inline-info"><span>Distance:</span> {distance}</p>
             </div>
         </a>
     """
