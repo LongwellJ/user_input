@@ -28,7 +28,7 @@ if user and "persona" in user:
 
 def load_documents(start_index, num_documents=1):
     try:
-        init_collection = db["initiate"]
+        init_collection = db["initiate_old"]
         documents = list(init_collection.find().skip(start_index).limit(num_documents))
         return documents
     except Exception as e:
@@ -64,8 +64,8 @@ if st.session_state.initialization_complete:
         0: "Data-Driven Analyst",
         1: "Engaging Storyteller",
         2: "Critical Thinker",
-        3: "Balanced Evaluator",
-        4: "Other"
+        3: "Balanced Evaluator"#,
+        # 4: "Other"
     }
     persona = persona_map.get(final_index, "Unknown Persona")
     users_collection.update_one(
@@ -106,7 +106,7 @@ col_btn1, col_btn2 = st.columns([1, 1])
 def update_doc2_callback():
     st.session_state.last_button = "A"
     # If we haven't yet shown the 4th document, update Document 2
-    if st.session_state.next_doc_index < 5:
+    if st.session_state.next_doc_index < 4:
         st.session_state.doc2_index = st.session_state.next_doc_index
         st.session_state.next_doc_index += 1
     else:
@@ -116,7 +116,7 @@ def update_doc2_callback():
 # Callback for Button B ("Select Document 2"): replaces Document 1
 def update_doc1_callback():
     st.session_state.last_button = "B"
-    if st.session_state.next_doc_index < 5:
+    if st.session_state.next_doc_index < 4:
         st.session_state.doc1_index = st.session_state.next_doc_index
         st.session_state.next_doc_index += 1
     else:
