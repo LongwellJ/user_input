@@ -34,3 +34,11 @@ engaging2_user_score.py
 engaging2_user.py
 find_clusters.py
 get_top5.py
+init_topics.py
+bertopic_model
+readability.py
+topic_analysis_report.md
+topic_comparison.png
+topic_distribution.png
+update_persona_buckets.py
+deeksha_error.py

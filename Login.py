@@ -17,6 +17,7 @@ rankings_collection = db["rankings"]  # MongoDB collection for rankings
 satisfaction_collection = db["satisfaction"]  # MongoDB collection for satisfaction
 users_collection = db["users"]  # MongoDB collection for users
 
+
 # --- User Authentication Function ---
 def authenticate_user(username):
     """Check if the username exists in the users collection"""
