@@ -62,6 +62,7 @@ st.markdown("""
         padding: 15px;
         margin-bottom: 20px;
         height: 100%;
+        text-align: center; /* Center align text */
     }
     .persona-title {
         font-size: 18px;
@@ -75,6 +76,7 @@ st.markdown("""
         border-radius: 5px;
         padding: 10px;
         margin-bottom: 10px;
+        text-align: center; /* Ensure topics are centered too */
     }
     .topic-text {
         font-size: 14px;

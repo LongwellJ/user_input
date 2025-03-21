@@ -16,12 +16,10 @@ def load_latest_articles(limit=10):
     try:
         # Get the top_stories collection
         top_stories = db["top_stories"]
-        
         # Query articles sorted by published date in descending order (newest first)
         latest_articles = list(
             top_stories.find().sort("published", -1).limit(limit)
         )
-        
         return latest_articles
     except Exception as e:
         st.error(f"Error loading latest articles: {e}")
@@ -45,12 +43,53 @@ else:
 
     # Display articles with score input
     for i, article in enumerate(st.session_state.latest_articles):
-        col1, col2 = st.columns([3, 1])
+        # Create three columns:
+        # col1 for the article card, col2 for the highlights card, col3 for the score input.
+        col1, col2, col3 = st.columns([3, 2, 1])
         with col1:
             st.markdown(st.session_state.latest_article_contents[i], unsafe_allow_html=True)
         
-        # Add score input for each article
         with col2:
+            # Get the highlights data; expect a list of strings.
+            highlights = article.get("highlights", [])
+            if isinstance(highlights, list) and len(highlights) > 0:
+                total_highlights = len(highlights)
+                # Set a unique key for the current article's highlight index in session state
+                highlight_key = f'highlight_index_{i}'
+                if highlight_key not in st.session_state:
+                    st.session_state[highlight_key] = 0
+                current_index = st.session_state[highlight_key]
+                # Get the current highlight and truncate if needed
+                current_highlight = highlights[current_index]
+                if len(current_highlight) > 250:
+                    current_highlight = current_highlight[:250] + '...'
+                highlight_count_text = f"Highlight {current_index + 1} of {total_highlights}"
+            else:
+                current_highlight = "no highlights available"
+                highlight_count_text = ""
+            
+            # Get the article URL from the article
+            url = article.get("link", "#")
+            # Display the highlight card with "Highlights:" label, the count, and the highlight text.
+            st.markdown(f"""
+                <a href="{url}" target="_blank">
+                    <div class="article-card">
+                        <strong style="font-size: 18px;">Highlights:</strong>
+                        <p style="font-size: 14px; margin-top: 5px; color: #888;">{highlight_count_text}</p>
+                        <p style="font-size: 16px; font-weight: normal; text-align: left; word-wrap: break-word; margin-top: 10px;">
+                            {current_highlight}
+                        </p>
+                    </div>
+                </a>
+            """, unsafe_allow_html=True)
+            
+            # If there are multiple highlights, show the "Next Highlight" button.
+            if isinstance(highlights, list) and len(highlights) > 1:
+                if st.button("Next Highlight", key=f'next_highlight_{i}'):
+                    st.session_state[highlight_key] = (st.session_state[highlight_key] + 1) % total_highlights
+                    st.rerun()
+        
+        with col3:
             score = st.number_input('Score this article', min_value=-1, max_value=1, value=0, key=f'score_{i}_article')
 
         # If score is -1, allow feedback
