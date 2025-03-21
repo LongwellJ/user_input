@@ -85,7 +85,7 @@ def format_article(article):
         <a href="{url}" target="_blank">
             <div class="article-card">
                 <h3 style="font-size: 20px; font-weight: bold;">{title}</h3>
-                <p style="font-size: 16px; color: inherit;">{truncated}</p>
+                <p style="font-size: 16px; color: inherit;">{content}</p>
                 <p class="inline-info"><span>Published:</span> {formatted_date},</p>
                 <p class="inline-info"><span>Author(s):</span> {authors_text},</p>
                 <p class="inline-info"><span>Duration:</span> {duration},</p>
