@@ -31,7 +31,7 @@ if not authenticate_user(st.session_state.get("user_name", "")):
 # Check if user is already initialized
 user = users_collection.find_one({"username": st.session_state.user_name})
 if user and "persona" in user:
-    st.success(f"Your profile is already initialized with persona: {user['persona']}")
+    st.success(f"Your profile is initialized")
     st.write("You can now proceed to the Curated Articles or Random Articles pages.")
     st.stop()
 
@@ -171,7 +171,7 @@ for idx, persona in enumerate(personas):
             st.rerun()
 if st.session_state.selected_persona:
     st.write(f"You have selected: **{st.session_state.selected_persona}**")
-    st.write("You can now proceed to the Curated Articles or Random Articles pages.")
+    st.write("You can now proceed to the Curated Articles, Latest News or Random Articles pages using the side bar.")
     
     if st.button("Start Exploring Articles"):
         st.session_state.needs_initialization = False
