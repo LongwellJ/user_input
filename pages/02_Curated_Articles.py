@@ -81,7 +81,8 @@ if st.button("Submit Scores"):
             "title": article.get("title"),
             "rank": score,
             "submission_id": submission_id,
-            "user_name": st.session_state.user_name
+            "user_name": st.session_state.user_name,
+            "page": "curated_articles"
         }
         if score == -1:
             feedback = st.session_state.get(f'feedback_{i}_article', '')

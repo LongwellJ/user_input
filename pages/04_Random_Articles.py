@@ -60,7 +60,8 @@ if st.button("Submit Scores", key="random_submit_scores"):
                 "title": article.get("title"),
                 "rank": score,
                 "submission_id": submission_id,
-                "user_name": st.session_state.user_name
+                "user_name": st.session_state.user_name,
+                "page": "random_articles"
             }
             if score == -1:
                 feedback = st.session_state.get(f'random_feedback_{i}_article', '')
