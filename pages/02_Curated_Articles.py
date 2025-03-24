@@ -8,7 +8,7 @@ import streamlit_analytics
 load_css()
 streamlit_analytics.start_tracking()
 st.title("Curated Articles")
-
+# st.set_page_config(page_title="Curated Articles", layout="wide")
 # Check if user is valid using MongoDB authentication
 if not st.session_state.get("is_valid_user", False) or not authenticate_user(st.session_state.get("user_name", "")):
     st.error("You need to be logged in as a valid user to view this page.")

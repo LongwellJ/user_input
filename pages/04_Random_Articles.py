@@ -8,7 +8,7 @@ import streamlit_analytics
 # Load CSS
 load_css()
 streamlit_analytics.start_tracking()
-
+# st.set_page_config(page_title="Random Articles", layout="wide")
 st.title("Random Articles")
 
 # --- Load Random Articles ---

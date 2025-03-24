@@ -9,7 +9,7 @@ from Login import (
 )
 
 # Optional: Set a wide page layout so columns have more space
-st.set_page_config(page_title="User Initialization", layout="wide")
+# st.set_page_config(page_title="User Initialization", layout="wide")
 
 db = client["techcrunch_db"]
 init_db = db["initiate_new"]
@@ -118,11 +118,11 @@ for idx, persona in enumerate(personas):
         # Unescape persona title
         persona_title = html.unescape(persona.get('persona', 'Unknown Persona'))
         
-        # Start the card container
-        st.markdown(f"""
-        <div class="persona-card">
-            <div class="persona-title">{persona_title}</div>
-        """, unsafe_allow_html=True)
+        # # Start the card container
+        # st.markdown(f"""
+        # <div class="persona-card">
+        #     <div class="persona-title">{persona_title}</div>
+        # """, unsafe_allow_html=True)
         
         # Add topic content
         for topic in persona.get('topics', []):
@@ -144,7 +144,8 @@ for idx, persona in enumerate(personas):
         st.markdown("</div>", unsafe_allow_html=True)
         
         # Only use the standard Streamlit button (which appears to be working)
-        if st.button(f"Select {persona_title}", key=f"button-{idx}"):
+        # if st.button(f"Select {persona_title}", key=f"button-{idx}"):
+        if st.button(f"Select this persona", key=f"button-{idx}"):
             # Map document index to persona
             persona_map = {
                 0: "Data-Driven Analyst",

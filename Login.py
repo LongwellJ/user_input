@@ -166,12 +166,10 @@ if "needs_initialization" not in st.session_state:
         
 # --- Home Page (User Form) ---
 def main():
+    st.set_page_config(page_title="Login", layout="wide")
 
     st.title("Read My Sources")
-    load_css()   
-    # st.header("Welcome to Read My Sources")
-    # st.write("Please enter your username to access the articles.") 
-    # print(st.session_state)
+    load_css()
     user_name = st.text_input("Enter your username:", value=st.session_state.user_name)
     # Create two columns
     col1, col2 = st.columns(2)

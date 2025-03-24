@@ -10,7 +10,7 @@ import uuid
 load_css()
 streamlit_analytics.start_tracking()
 st.title("Latest News")
-
+# st.set_page_config(page_title="Latest News", layout="wide")
 # --- Load Latest Articles from top_stories collection ---
 def load_latest_articles(limit=10):
     try:
