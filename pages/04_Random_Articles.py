@@ -16,8 +16,25 @@ if "random_articles" not in st.session_state:
     st.session_state.random_articles = load_random_articles(limit=5)
     st.session_state.random_article_contents = [format_article(article) for article in st.session_state.random_articles]
 
+# Function to clear all user inputs for random articles
+def clear_random_article_inputs():
+    # Get number of articles currently loaded
+    num_articles = len(st.session_state.random_articles)
+    
+    # Clear scores and feedback for all articles
+    for i in range(num_articles):
+        # Reset scores to default value (0)
+        if f'random_score_{i}_article' in st.session_state:
+            st.session_state[f'random_score_{i}_article'] = 0
+            
+        # Clear any feedback text
+        if f'random_feedback_{i}_article' in st.session_state:
+            st.session_state[f'random_feedback_{i}_article'] = ""
+
 # Button to load new random articles
 if st.sidebar.button("Load New Random Articles"):
+    clear_random_article_inputs()
+
     st.session_state.random_articles = load_random_articles(limit=5)
     st.session_state.random_article_contents = [format_article(article) for article in st.session_state.random_articles]
 
