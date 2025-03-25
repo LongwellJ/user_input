@@ -16,6 +16,7 @@ top_stories = db["top_stories"]
 rankings_collection = db["rankings"]  # MongoDB collection for rankings
 satisfaction_collection = db["satisfaction"]  # MongoDB collection for satisfaction
 users_collection = db["users"]  # MongoDB collection for users
+highlight_feedback_collection = db["highlight_feedback"]
 
 
 # --- User Authentication Function ---

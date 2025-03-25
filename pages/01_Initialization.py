@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import json
+import numpy as np
 import html  # For unescaping HTML if it's stored with entities
 from Login import (
     client, db, users_collection, format_article, load_css,
@@ -13,6 +14,13 @@ from Login import (
 
 db = client["techcrunch_db"]
 init_db = db["initiate_new"]
+
+initial_centroids = np.array([
+    [1, 1, 3, 3, 4, 1, 3, 3, 1, 1, 3],  # DATA-DRIVEN Analyst
+    [4, 4, 3, 4, 4, 4, 3, 3, 4, 4, 3],  # engaging storyteller
+    [2, 2, 3, 3, 4, 2, 3, 3, 2, 2, 3],  # critical thinker
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]   # Balanced Evaluator
+])
 
 # Load CSS and set title
 load_css()
@@ -118,12 +126,6 @@ for idx, persona in enumerate(personas):
         # Unescape persona title
         persona_title = html.unescape(persona.get('persona', 'Unknown Persona'))
         
-        # # Start the card container
-        # st.markdown(f"""
-        # <div class="persona-card">
-        #     <div class="persona-title">{persona_title}</div>
-        # """, unsafe_allow_html=True)
-        
         # Add topic content
         for topic in persona.get('topics', []):
             summary = html.unescape(topic.get('summary', 'No summary available'))
@@ -143,23 +145,28 @@ for idx, persona in enumerate(personas):
         # Close the card container - no custom select button here
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # Only use the standard Streamlit button (which appears to be working)
-        # if st.button(f"Select {persona_title}", key=f"button-{idx}"):
+        # Persona selection button
         if st.button(f"Select this persona", key=f"button-{idx}"):
             # Map document index to persona
             persona_map = {
                 0: "Data-Driven Analyst",
                 1: "Engaging Storyteller",
                 2: "Critical Thinker",
-                3: "Balanced Evaluator"#,
-                # 4: "Other"
+                3: "Balanced Evaluator"
             }
             persona = persona_map.get(idx, "Unknown Persona")
             
-            # Update the user's profile
+            # Determine the user embedding based on the selected persona
+            embedding_index = list(persona_map.keys())[list(persona_map.values()).index(persona)]
+            user_embedding = [float(x) for x in initial_centroids[embedding_index].tolist()]
+            
+            # Update the user's profile with persona and embedding
             users_collection.update_one(
                 {"username": st.session_state.user_name},
-                {"$set": {"persona": persona}}
+                {"$set": {
+                    "persona": persona,
+                    "user_embedding": user_embedding
+                }}
             )
             
             # Update session state
@@ -169,6 +176,7 @@ for idx, persona in enumerate(personas):
             # Show success message
             st.success(f"Initialization complete! Your profile has been updated with persona: {persona}")
             st.rerun()
+
 if st.session_state.selected_persona:
     st.write(f"You have selected: **{st.session_state.selected_persona}**")
     st.write("You can now proceed to the Curated Articles, Latest News or Random Articles pages using the side bar.")

@@ -1,8 +1,7 @@
-# pages/03_Latest_News.py
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from Login import client, db, format_article, load_css, rankings_collection, satisfaction_collection
+from Login import client, db, format_article, load_css, rankings_collection, satisfaction_collection, highlight_feedback_collection
 import streamlit_analytics
 import uuid
 
@@ -83,21 +82,76 @@ else:
                 </a>
             """, unsafe_allow_html=True)
             
-            # If there are multiple highlights, show the "Next Highlight" button.
-            if isinstance(highlights, list) and len(highlights) > 1:
-                if st.button("Next Highlight", key=f'next_highlight_{i}'):
-                    st.session_state[highlight_key] = (st.session_state[highlight_key] + 1) % total_highlights
-                    st.rerun()
         
         with col3:
-            score = st.number_input('Score this article', min_value=-1, max_value=1, value=0, key=f'score_{i}_article')
+            # Article scoring
+            # st.markdown("##### Article Score")
+            score = st.number_input('Article Score', min_value=-1, max_value=1, value=0, key=f'score_{i}_article')
 
-        # If score is -1, allow feedback
-        if score == -1:
-            feedback = st.text_area(f"Additional Feedback for '{article['title']}'", key=f'feedback_{i}_article')
+            # If score is -1, allow feedback
+            if score == -1:
+                feedback = st.text_area(f"Feedback for article", key=f'feedback_{i}_article', height=80)
+            
+            # Add highlight feedback in the same column
+            if isinstance(highlights, list) and len(highlights) > 0:
+                # st.markdown("---")
+                # st.markdown("##### Highlight Score")
+                current_index = st.session_state.get(f'highlight_index_{i}', 0)
+                
+                # Score for current highlight
+                highlight_score = st.number_input(
+                    'Highlight Score', 
+                    min_value=-1, 
+                    max_value=1, 
+                    value=0, 
+                    key=f'score_{i}_highlight_{current_index}'
+                )
+                
+                # Feedback text area for highlight (shorter height to save space)
+                if highlight_score == -1:
+                    highlight_feedback = st.text_area(
+                        "Feedback for highlight", 
+                        key=f'feedback_{i}_highlight_{current_index}',
+                        height=80
+                    )
+                else:
+                    highlight_feedback = ""
+                
+                # Submit button for highlight feedback
+                if st.button("Submit Highlight Score", key=f'submit_highlight_{i}_{current_index}'):
+                    if not st.session_state.get("user_name"):
+                        st.error("Please validate your name on the Login page before submitting feedback.")
+                    else:
+                        try:
+                            current_highlight = highlights[current_index]
+                            if len(current_highlight) > 250:
+                                current_highlight = current_highlight[:250] + '...'
+                                
+                            highlight_feedback_data = {
+                                "article_id": str(article.get("_id")),
+                                "article_title": article.get("title"),
+                                "highlight_index": current_index,
+                                "highlight_text": current_highlight,
+                                "score": highlight_score,
+                                "feedback": highlight_feedback,
+                                "user_name": st.session_state.user_name,
+                                "submission_id": str(uuid.uuid4()),
+                                "timestamp": datetime.now(),
+                                "page": "latest_news"
+                            }
+                            highlight_feedback_collection.insert_one(highlight_feedback_data)
+                            st.success("Highlight score saved!")
+                        except Exception as e:
+                            st.error(f"Error saving highlight score: {e}")
+
+                # If there are multiple highlights, show the "Next Highlight" button.
+                if isinstance(highlights, list) and len(highlights) > 1:
+                    if st.button("Next Highlight", key=f'next_highlight_{i}'):
+                        st.session_state[highlight_key] = (st.session_state[highlight_key] + 1) % total_highlights
+                        st.rerun()
 
 # --- Submit Rankings Button ---
-if st.button("Submit Scores"):
+if st.button("Submit Article Scores"):
     if not st.session_state.get("user_name"):
         st.error("Please validate your name on the Login page before submitting scores.")
     else:
@@ -120,9 +174,9 @@ if st.button("Submit Scores"):
         try:
             if rankings:
                 rankings_collection.insert_many(rankings)
-            st.success("Your rankings have been saved!")
+            st.success("Your article scores have been saved!")
         except Exception as e:
-            st.error(f"Error saving rankings: {e}")
+            st.error(f"Error saving article scores: {e}")
 
 # --- Satisfaction Survey (Integrated) ---
 st.markdown("---")

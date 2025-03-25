@@ -45,3 +45,5 @@ deeksha_error.py
 format_text_chunks.py
 responses_copy.json
 persona_embedding_calculate.py
+convert_to_arrays.py
+get_user_find_docs.py
