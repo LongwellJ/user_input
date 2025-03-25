@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from Login import client, db, format_article, load_css, rankings_collection, satisfaction_collection, highlight_feedback_collection
+from Login import client, db, format_article, load_css, rankings_collection, satisfaction_collection, highlight_feedback_collection, users_collection, update_user_embedding, load_latest_articles
 import streamlit_analytics
 import uuid
 
@@ -9,21 +9,7 @@ import uuid
 load_css()
 streamlit_analytics.start_tracking()
 st.title("Latest News")
-# st.set_page_config(page_title="Latest News", layout="wide")
-# --- Load Latest Articles from top_stories collection ---
-def load_latest_articles(limit=10):
-    try:
-        # Get the top_stories collection
-        top_stories = db["top_stories"]
-        # Query articles sorted by published date in descending order (newest first)
-        latest_articles = list(
-            top_stories.find().sort("published", -1).limit(limit)
-        )
-        return latest_articles
-    except Exception as e:
-        st.error(f"Error loading latest articles: {e}")
-        return []
-
+    
 # Initialize session state for latest articles if not exists
 if "latest_articles" not in st.session_state:
     st.session_state.latest_articles = load_latest_articles()
@@ -170,6 +156,20 @@ if st.button("Submit Article Scores"):
                 feedback = st.session_state.get(f'feedback_{i}_article', '')
                 ranking_data["feedback"] = feedback
             rankings.append(ranking_data)
+
+        # Check if article has a response_array
+            if article.get('response_array'):
+                try:
+                    updated_embedding = update_user_embedding(
+                        users_collection, 
+                        st.session_state.user_name, 
+                        article['response_array'],
+                        score
+                    )
+                    # if updated_embedding:
+                    #     st.success(f"User embedding updated for article {i+1}")
+                except Exception as e:
+                    st.error(f"Error updating user embedding for article {i+1}: {e}")
         
         try:
             if rankings:

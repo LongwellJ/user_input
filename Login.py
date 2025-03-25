@@ -29,7 +29,16 @@ def check_user_initialized(username):
     """Check if the user has completed initialization (has a persona)"""
     user = users_collection.find_one({"username": username})
     return user is not None and "persona" in user
-
+# Helper function to get persona collection
+def _get_persona_collection(persona):
+    persona_collections = {
+        "Data-Driven Analyst": db["Data-Driven Analyst"],
+        "Engaging Storyteller": db["Engaging Storyteller"],
+        "Critical Thinker": db["Critical Thinker"],
+        "Balanced Evaluator": db["Balanced Evaluator"],
+        "Other": db["Other"]
+    }
+    return persona_collections.get(persona, db["Engaging Storyteller"])
 # --- Common Functions ---
 def clean_html(raw_html):
     return BeautifulSoup(raw_html, "html.parser").get_text()
@@ -108,6 +117,77 @@ def load_articles_from_mongodb(offset=0, limit=5, collection=None):
         return []
 
 
+def update_user_embedding(users_collection, user_name, article_response_array, feedback_score):
+    """
+    Update the user's embedding with sophisticated handling of negative feedback.
+    
+    Args:
+    - users_collection: MongoDB collection for users
+    - user_name: Username of the current user
+    - article_response_array: Response array from the current article
+    - feedback_score: Score given to the article (-1, 0, or 1)
+    
+    Returns:
+    - Updated user embedding as a list of 11 floats
+    """
+    # Find the current user
+    user_data = users_collection.find_one({"username": user_name})
+    
+    if not user_data:
+        st.error(f"User {user_name} not found.")
+        return None
+    
+    # Get the current user embedding or initialize if not exists
+    current_embedding = user_data.get('user_embedding', None)
+    
+    # Get the current number of feedback submissions
+    feedback_count = user_data.get('feedback_count', 0)
+    
+    # Calculate new embedding based on feedback score
+    if current_embedding is None:
+        # First feedback submission
+        new_embedding = article_response_array
+        feedback_count = 1
+    else:
+        if feedback_score == -1:
+            # Negative feedback: push the embedding away from the current article's embedding
+            # Use a negative learning rate to move in the opposite direction
+            negative_learning_rate = -0.5  # Adjust this value as needed
+            new_embedding = [
+                current_embedding[i] + (negative_learning_rate * (current_embedding[i] - article_response_array[i]))
+                for i in range(len(current_embedding))
+            ]
+            feedback_count += 1
+        elif feedback_score == 1:
+            # Positive feedback: double the weight
+            new_embedding = [
+                ((current_embedding[i] * feedback_count) + (article_response_array[i] * 2)) 
+                / (feedback_count + 2)
+                for i in range(len(current_embedding))
+            ]
+            feedback_count += 2
+        else:  # feedback_score == 0
+            # Neutral feedback: standard update method
+            new_embedding = [
+                ((current_embedding[i] * feedback_count) + article_response_array[i]) 
+                / (feedback_count + 1)
+                for i in range(len(current_embedding))
+            ]
+            feedback_count += 1
+    
+    # Update user document
+    users_collection.update_one(
+        {"username": user_name},
+        {
+            "$set": {
+                "user_embedding": new_embedding,
+                "feedback_count": feedback_count
+            }
+        }
+    )
+    
+    return new_embedding
+
 def load_random_articles(limit=5):
     try:
 
@@ -117,6 +197,19 @@ def load_random_articles(limit=5):
         st.error(f"Error loading random articles from MongoDB: {e}")
         return []
 
+def load_latest_articles(limit=5):
+    try:
+        # Get the top_stories collection
+        top_stories = db["top_stories"]
+        # Query articles sorted by published date in descending order (newest first)
+        latest_articles = list(
+            top_stories.find().sort("published", -1).limit(limit)
+        )
+        return latest_articles
+    except Exception as e:
+        st.error(f"Error loading latest articles: {e}")
+        return []
+    
 # --- Common CSS Styles ---
 def load_css():
     st.markdown("""
