@@ -69,33 +69,6 @@ else:
     st.session_state.articles_data = load_articles_from_mongodb(offset=0, limit=5, collection=selected_collection)
     st.session_state.article_content = [format_article(article) for article in st.session_state.articles_data]
 
-
-# Initialize articles offset if not already done
-if "articles_offset" not in st.session_state:
-    st.session_state.articles_offset = 5
-# Map persona to the corresponding collection
-if persona == "Data-Driven Analyst":
-    selected_collection = db["Data-Driven Analyst"]
-elif persona == "Engaging Storyteller":
-    selected_collection = db["Engaging Storyteller"]
-elif persona == "Critical Thinker":
-    selected_collection = db["Critical Thinker"]
-elif persona == "Balanced Evaluator":
-    selected_collection = db["Balanced Evaluator"]
-elif persona == "Other":
-    selected_collection = db["Other"]
-else: 
-    selected_collection = db["Engaging Storyteller"]
-
-# --- Initialize session state variables for articles if not already done ---
-if "articles_data" not in st.session_state:
-    st.session_state.articles_data = load_articles_from_mongodb(offset=0, limit=5, collection=selected_collection)
-if "article_content" not in st.session_state:
-    st.session_state.article_content = [format_article(article) for article in st.session_state.articles_data]
-if "articles_offset" not in st.session_state:
-    st.session_state.articles_offset = 5
-
-
 # --- Sidebar: Load More Button ---
 if st.sidebar.button("Load More"):
     if user_embedding and len(user_embedding) > 0 and feedback_count > 5:
