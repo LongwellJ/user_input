@@ -18,7 +18,11 @@ satisfaction_collection = db["satisfaction"]  # MongoDB collection for satisfact
 users_collection = db["users"]  # MongoDB collection for users
 highlight_feedback_collection = db["highlight_feedback"]
 
-
+def clear_article_session_data():
+    session_keys = ["articles_data", "article_content", "articles_offset"]
+    for key in session_keys:
+        if key in st.session_state:
+            del st.session_state[key]
 # --- User Authentication Function ---
 def authenticate_user(username):
     """Check if the username exists in the users collection"""
@@ -29,16 +33,7 @@ def check_user_initialized(username):
     """Check if the user has completed initialization (has a persona)"""
     user = users_collection.find_one({"username": username})
     return user is not None and "persona" in user
-# Helper function to get persona collection
-def _get_persona_collection(persona):
-    persona_collections = {
-        "Data-Driven Analyst": db["Data-Driven Analyst"],
-        "Engaging Storyteller": db["Engaging Storyteller"],
-        "Critical Thinker": db["Critical Thinker"],
-        "Balanced Evaluator": db["Balanced Evaluator"],
-        "Other": db["Other"]
-    }
-    return persona_collections.get(persona, db["Engaging Storyteller"])
+
 # --- Common Functions ---
 def clean_html(raw_html):
     return BeautifulSoup(raw_html, "html.parser").get_text()
@@ -48,6 +43,46 @@ def remove_footer_text(summary):
     if index != -1:
         return summary[:index].rstrip()  # Remove footer and trailing whitespace
     return summary  # Return unchanged
+
+# --- New Function: Load Articles via Vector Search ---
+def load_articles_vector_search(user_embedding, offset=0, limit=5):
+    """
+    Load articles using a vector search query on the top_stories collection.
+    The pipeline uses the user's embedding to find articles.
+    """
+    try:
+        pipeline = [
+            {
+                "$vectorSearch": {
+                    "index": "vector_index",
+                    "path": "response_array",
+                    "queryVector": user_embedding,
+                    "numCandidates": 300,
+                    # Get enough candidates so that we can later skip 'offset' and limit to 'limit'
+                    "limit": offset + limit  
+                }
+            },
+            {
+                "$setWindowFields": {
+                    "sortBy": { "_id": 1 },
+                    "output": {
+                        "row_number": { "$documentNumber": {} }
+                    }
+                }
+            },
+            {
+                "$match": { "row_number": { "$gt": offset } }
+            },
+            {
+                "$limit": limit
+            }
+        ]
+        results = list(db.top_stories.aggregate(pipeline))
+        return results
+    except Exception as e:
+        st.error(f"Error loading articles with vector search: {e}")
+        return []
+    
 
 def format_article(article):
     title = str(article.get("title", "Unknown Title"))
@@ -271,6 +306,7 @@ def main():
     with col1:
         if st.button("Login"):
             st.session_state.user_name = user_name
+            clear_article_session_data()
             # Check if user exists in the MongoDB collection
             if authenticate_user(user_name):
                 st.session_state.is_valid_user = True

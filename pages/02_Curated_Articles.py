@@ -15,11 +15,11 @@ from Login import (
     load_css, 
     authenticate_user,
     update_user_embedding,
-    _get_persona_collection
+    load_articles_vector_search
 )
 import streamlit_analytics
 
-# Load CSS
+# Load CSS and start analytics tracking
 load_css()
 streamlit_analytics.start_tracking()
 st.title("Curated Articles")
@@ -39,73 +39,50 @@ persona = user_data.get("persona", "Critical Thinker")
 feedback_count = user_data.get("feedback_count", 0)
 user_embedding = user_data.get("user_embedding", [])
 
-# --- Article Selection Logic ---
-# Check if user has a non-empty embedding and sufficient feedback count
-if user_embedding and len(user_embedding) > 0 and feedback_count > 5:
-    # Use vector search to get personalized articles
-    try:
-        results = list(db.top_stories.aggregate([
-            {
-                "$vectorSearch": {
-                    "index": "vector_index",
-                    "path": "response_array",
-                    "queryVector": user_embedding,
-                    "numCandidates": 300,
-                    "limit": 5
-                }
-            }
-        ]))
-        st.session_state.articles_data = results
-        st.session_state.article_content = [format_article(article) for article in results]
-    except Exception as e:
-        st.error(f"Error performing vector search: {e}")
-        # Fallback to persona-based collection if vector search fails
-        selected_collection = _get_persona_collection(persona)
+# Map persona to the corresponding collection (for non-vector search)
+if persona == "Data-Driven Analyst":
+    selected_collection = db["Data-Driven Analyst"]
+elif persona == "Engaging Storyteller":
+    selected_collection = db["Engaging Storyteller"]
+elif persona == "Critical Thinker":
+    selected_collection = db["Critical Thinker"]
+elif persona == "Balanced Evaluator":
+    selected_collection = db["Balanced Evaluator"]
+elif persona == "Other":
+    selected_collection = db["Other"]
+else: 
+    selected_collection = db["Engaging Storyteller"]
+
+
+# --- Initialize session state variables for articles ---
+# Determine which loading method to use based on feedback_count and user_embedding
+if "articles_data" not in st.session_state:
+    if feedback_count >= 5 and isinstance(user_embedding, list) and len(user_embedding) > 0:
+        st.session_state.articles_data = load_articles_vector_search(user_embedding, offset=0, limit=5)
+    else:
         st.session_state.articles_data = load_articles_from_mongodb(offset=0, limit=5, collection=selected_collection)
-        st.session_state.article_content = [format_article(article) for article in st.session_state.articles_data]
-else:
-    # Default to persona-based collection selection
-    selected_collection = _get_persona_collection(persona)
-    st.session_state.articles_data = load_articles_from_mongodb(offset=0, limit=5, collection=selected_collection)
+
+if "article_content" not in st.session_state:
     st.session_state.article_content = [format_article(article) for article in st.session_state.articles_data]
+
+if "articles_offset" not in st.session_state:
+    st.session_state.articles_offset = 5
 
 # --- Sidebar: Load More Button ---
 if st.sidebar.button("Load More"):
-    if user_embedding and len(user_embedding) > 0 and feedback_count > 5:
-        # For vector search, implement pagination manually
-        try:
-            results = list(db.top_stories.aggregate([
-                {
-                    "$vectorSearch": {
-                        "index": "vector_index",
-                        "path": "response_array",
-                        "queryVector": user_embedding,
-                        "numCandidates": 300,
-                        "limit": 5,
-                        "skip": st.session_state.articles_offset
-                    }
-                }
-            ]))
-            if results:
-                st.session_state.articles_data.extend(results)
-                for article in results:
-                    st.session_state.article_content.append(format_article(article))
-                st.session_state.articles_offset += len(results)
-            else:
-                st.sidebar.warning("No more articles available.")
-        except Exception as e:
-            st.error(f"Error loading more vector search articles: {e}")
+    offset = st.session_state.articles_offset
+    if feedback_count >= 5 and isinstance(user_embedding, list) and len(user_embedding) > 0:
+        new_articles = load_articles_vector_search(user_embedding, offset=offset, limit=5)
     else:
-        # Use existing load_articles_from_mongodb for persona-based collection
-        selected_collection = _get_persona_collection(persona)
-        new_articles = load_articles_from_mongodb(offset=st.session_state.articles_offset, limit=5, collection=selected_collection)
-        if new_articles:
-            st.session_state.articles_data.extend(new_articles)
-            for article in new_articles:
-                st.session_state.article_content.append(format_article(article))
-            st.session_state.articles_offset += len(new_articles)
-        else:
-            st.sidebar.warning("No more articles available.")
+        new_articles = load_articles_from_mongodb(offset=offset, limit=5, collection=selected_collection)
+        
+    if new_articles:
+        st.session_state.articles_data.extend(new_articles)
+        for article in new_articles:
+            st.session_state.article_content.append(format_article(article))
+        st.session_state.articles_offset += len(new_articles)
+    else:
+        st.sidebar.warning("No more articles available.")
 
 # --- Display Articles and Score Input ---
 if not st.session_state.articles_data:
@@ -114,6 +91,7 @@ else:
     st.write("Assign a score to each item (1 = Strong Accept, 0 = Weak Accept, -1 = Reject):")
 
 for i, article in enumerate(st.session_state.articles_data):
+    
     # Create three columns: article, highlights, and scoring
     col1, col2, col3 = st.columns([3, 2, 1])
     
@@ -226,6 +204,7 @@ if st.button("Submit Article Scores"):
         submission_id = str(uuid.uuid4())
         rankings = []
         for i, article in enumerate(st.session_state.articles_data):
+            print(f"Loaded article {i}: {article}")
             score = st.session_state.get(f'score_{i}_article')
             ranking_data = {
                 "title": article.get("title"),
@@ -240,16 +219,33 @@ if st.button("Submit Article Scores"):
             rankings.append(ranking_data)
 
             # Check if article has a response_array for embedding update
+            print("hello 1")
             if article.get('response_array'):
+                print("hello 2")
                 try:
+                    print(f"Debug: Processing embedding update for article {i+1}")
+                    print(f"Debug: User: {st.session_state.user_name}")
+                    print(f"Debug: Article Response Array: {article['response_array'][:5]}... (truncated)")
+                    print(f"Debug: Score: {score}")
+                    
                     updated_embedding = update_user_embedding(
                         users_collection, 
                         st.session_state.user_name, 
                         article['response_array'],
                         score
                     )
+
+                    # Debugging output to check function result
+                    print(f"Debug: Updated Embedding Returned: {updated_embedding}")
+
+                    # Verify user data after update
+                    user_data_after_update = users_collection.find_one({"username": st.session_state.user_name})
+                    print(f"Debug: User Embedding After Update: {user_data_after_update.get('user_embedding', 'Not Found')}")
+
                 except Exception as e:
+                    print(f"Debug: Error updating user embedding for article {i+1}: {e}")
                     st.error(f"Error updating user embedding for article {i+1}: {e}")
+
         
         try:
             if rankings:
