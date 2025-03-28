@@ -47,13 +47,27 @@ def remove_footer_text(summary):
         return summary[:index].rstrip()  # Remove footer and trailing whitespace
     return summary  # Return unchanged
 
-# --- New Function: Load Articles via Vector Search ---
-def load_articles_vector_search(user_embedding, offset=0, limit=5):
+def load_articles_vector_search(user_name, user_embedding, offset=0, limit=5):
     """
-    Load articles using a vector search query on the top_stories collection.
-    The pipeline uses the user's embedding to find articles.
+    Load articles using a vector search query on the top_stories collection,
+    excluding articles the user has already provided feedback on.
+    
+    Args:
+    - user_name (str): Username to filter out previously rated articles
+    - user_embedding (list): Embedding vector for similarity search
+    - offset (int): Number of documents to skip
+    - limit (int): Number of documents to retrieve
+    
+    Returns:
+    - List of articles
     """
     try:
+        # Get IDs of articles user has already provided feedback on
+        feedback_article_ids = get_user_feedback_article_ids(user_name)
+        
+        # Convert feedback article IDs to ObjectId
+        feedback_article_ids = [ObjectId(article_id) for article_id in feedback_article_ids]
+        
         pipeline = [
             {
                 "$vectorSearch": {
@@ -62,7 +76,12 @@ def load_articles_vector_search(user_embedding, offset=0, limit=5):
                     "queryVector": user_embedding,
                     "numCandidates": 300,
                     # Get enough candidates so that we can later skip 'offset' and limit to 'limit'
-                    "limit": offset + limit  
+                    "limit": offset + limit + len(feedback_article_ids)  # Increase to account for filtered out articles
+                }
+            },
+            {
+                "$match": {
+                    "_id": {"$nin": feedback_article_ids}  # Exclude articles with feedback
                 }
             },
             {
@@ -80,8 +99,10 @@ def load_articles_vector_search(user_embedding, offset=0, limit=5):
                 "$limit": limit
             }
         ]
+        
         results = list(db.top_stories.aggregate(pipeline))
         return results
+    
     except Exception as e:
         st.error(f"Error loading articles with vector search: {e}")
         return []

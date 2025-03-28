@@ -57,7 +57,7 @@ elif persona == "Balanced Evaluator":
 # Determine which loading method to use based on feedback_count and user_embedding
 if "articles_data" not in st.session_state:
     if feedback_count >= 5 and isinstance(user_embedding, list) and len(user_embedding) > 0:
-        st.session_state.articles_data = load_articles_vector_search(user_embedding, offset=0, limit=5)
+        st.session_state.articles_data = load_articles_vector_search(user_name=st.session_state.user_name, user_embedding=user_embedding, offset=0, limit=5)
     else:
         st.session_state.articles_data = load_articles_from_mongodb(user_name=st.session_state.user_name, offset=0, limit=5, collection=selected_collection)
 
@@ -71,9 +71,9 @@ if "articles_offset" not in st.session_state:
 if st.sidebar.button("Load More"):
     offset = st.session_state.articles_offset
     if feedback_count >= 5 and isinstance(user_embedding, list) and len(user_embedding) > 0:
-        new_articles = load_articles_vector_search(user_embedding, offset=offset, limit=5)
+        new_articles = load_articles_vector_search(user_name=st.session_state.user_name, user_embedding=user_embedding, offset=offset, limit=5)
     else:
-        new_articles = load_articles_from_mongodb(offset=offset, limit=5, collection=selected_collection)
+        new_articles = load_articles_from_mongodb(user_name=st.session_state.user_name, offset=offset, limit=5, collection=selected_collection)
         
     if new_articles:
         st.session_state.articles_data.extend(new_articles)
