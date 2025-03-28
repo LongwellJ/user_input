@@ -138,7 +138,7 @@ def get_user_feedback_article_ids(user_name, feedback_type=None):
         st.error(f"Error retrieving user feedback article IDs: {e}")
         return []
 
-def load_articles_excluding_feedback(user_name, limit=5):
+def load_latest_articles_excluding_feedback(user_name, limit=5):
     """
     Load articles excluding those the user has already given feedback on.
     
@@ -157,8 +157,7 @@ def load_articles_excluding_feedback(user_name, limit=5):
         query = {"_id": {"$nin": [ObjectId(article_id) for article_id in feedback_article_ids]}}
         
         # Retrieve new articles
-        new_articles = list(top_stories.find(query).limit(limit))
-        
+        new_articles = list(top_stories.find(query).sort("published", -1).limit(limit))
         # If not enough articles, fill with random articles
         # if len(new_articles) < limit:
         #     additional_articles = list(top_stories.aggregate([
@@ -339,7 +338,7 @@ def load_random_articles(limit=5):
 def load_latest_articles(user_name=None, limit=5):
     if user_name:
         # Use the new function that excludes previously rated articles
-        return load_articles_excluding_feedback(user_name, limit)
+        return load_latest_articles_excluding_feedback(user_name, limit)
     else:
         try:
             # Get the top_stories collection

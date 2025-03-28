@@ -1,7 +1,18 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from Login import format_article, load_css, rankings_collection, satisfaction_collection, highlight_feedback_collection, users_collection, update_user_embedding, load_latest_articles, track_user_article_feedback
+from Login import(
+    format_article,
+    load_css,
+    rankings_collection,
+    satisfaction_collection,
+    highlight_feedback_collection,
+    users_collection,
+    update_user_embedding,
+    load_latest_articles,
+    track_user_article_feedback,
+    load_latest_articles_excluding_feedback
+)
 import streamlit_analytics
 import uuid
 
@@ -154,7 +165,7 @@ if st.button("Submit Article Scores"):
             track_user_article_feedback(
                 st.session_state.user_name, 
                 article.get("_id"), 
-                "ranking"
+                "latest_news",
             )
             ranking_data = {
                 "title": article.get("title"),

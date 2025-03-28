@@ -15,7 +15,8 @@ from Login import (
     load_css, 
     authenticate_user,
     update_user_embedding,
-    load_articles_vector_search
+    load_articles_vector_search,
+    track_user_article_feedback
 )
 import streamlit_analytics
 
@@ -196,6 +197,7 @@ for i, article in enumerate(st.session_state.articles_data):
                     st.session_state[highlight_key] = (st.session_state[highlight_key] + 1) % total_highlights
                     st.rerun()
 
+
 # --- Submit Rankings Button ---
 if st.button("Submit Article Scores"):
     if not st.session_state.get("user_name"):
@@ -204,8 +206,15 @@ if st.button("Submit Article Scores"):
         submission_id = str(uuid.uuid4())
         rankings = []
         for i, article in enumerate(st.session_state.articles_data):
-            print(f"Loaded article {i}: {article}")
             score = st.session_state.get(f'score_{i}_article')
+
+            # Track article ranking feedback
+            track_user_article_feedback(
+                st.session_state.user_name, 
+                article.get("_id"), 
+                "curated_articles",
+            )
+
             ranking_data = {
                 "title": article.get("title"),
                 "rank": score,
@@ -219,33 +228,16 @@ if st.button("Submit Article Scores"):
             rankings.append(ranking_data)
 
             # Check if article has a response_array for embedding update
-            print("hello 1")
             if article.get('response_array'):
-                print("hello 2")
                 try:
-                    print(f"Debug: Processing embedding update for article {i+1}")
-                    print(f"Debug: User: {st.session_state.user_name}")
-                    print(f"Debug: Article Response Array: {article['response_array'][:5]}... (truncated)")
-                    print(f"Debug: Score: {score}")
-                    
                     updated_embedding = update_user_embedding(
                         users_collection, 
                         st.session_state.user_name, 
                         article['response_array'],
                         score
                     )
-
-                    # Debugging output to check function result
-                    print(f"Debug: Updated Embedding Returned: {updated_embedding}")
-
-                    # Verify user data after update
-                    user_data_after_update = users_collection.find_one({"username": st.session_state.user_name})
-                    print(f"Debug: User Embedding After Update: {user_data_after_update.get('user_embedding', 'Not Found')}")
-
                 except Exception as e:
-                    print(f"Debug: Error updating user embedding for article {i+1}: {e}")
                     st.error(f"Error updating user embedding for article {i+1}: {e}")
-
         
         try:
             if rankings:
@@ -254,17 +246,6 @@ if st.button("Submit Article Scores"):
         except Exception as e:
             st.error(f"Error saving article scores: {e}")
 
-# --- Display Submitted Rankings ---
-if st.checkbox("Show submitted rankings"):
-    try:
-        rankings_data = list(rankings_collection.find())
-        df = pd.DataFrame(rankings_data)
-        if not df.empty:
-            st.dataframe(df[['submission_id', 'user_name', 'title', 'rank']])
-        else:
-            st.info("No rankings data found.")
-    except Exception as e:
-        st.error(f"Error loading rankings: {e}")
 
 # --- Satisfaction Survey (Integrated) ---
 st.markdown("---")

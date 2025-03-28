@@ -13,7 +13,8 @@ from Login import (
     format_article, 
     load_random_articles, 
     load_css, 
-    update_user_embedding
+    update_user_embedding,
+    track_user_article_feedback
 )
 import streamlit_analytics
 
@@ -184,6 +185,12 @@ if st.button("Submit Article Scores", key="random_articles_submit"):
         rankings = []
         for i, article in enumerate(st.session_state.random_articles):
             score = st.session_state.get(f'random_score_{i}_article')
+
+            track_user_article_feedback(
+                st.session_state.user_name, 
+                article.get("_id"), 
+                "random_news",
+            )
             ranking_data = {
                 "title": article.get("title"),
                 "rank": score,
