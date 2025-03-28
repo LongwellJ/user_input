@@ -36,7 +36,10 @@ if not st.session_state.get("is_valid_user", False) or not authenticate_user(st.
 user_data = users_collection.find_one({"username": st.session_state.user_name})
 
 # Default to "Critical Thinker" if no persona is found
-persona = user_data.get("persona", "Critical Thinker")
+persona = user_data.get("persona", None)
+if persona is None:
+    st.error("No persona found for the user. Please go to the initialization page or provide article feedback on the other pages.")
+    st.stop()
 feedback_count = user_data.get("feedback_count", 0)
 user_embedding = user_data.get("user_embedding", [])
 
@@ -49,11 +52,6 @@ elif persona == "Critical Thinker":
     selected_collection = db["Critical Thinker"]
 elif persona == "Balanced Evaluator":
     selected_collection = db["Balanced Evaluator"]
-elif persona == "Other":
-    selected_collection = db["Other"]
-else: 
-    selected_collection = db["Engaging Storyteller"]
-
 
 # --- Initialize session state variables for articles ---
 # Determine which loading method to use based on feedback_count and user_embedding
@@ -61,7 +59,7 @@ if "articles_data" not in st.session_state:
     if feedback_count >= 5 and isinstance(user_embedding, list) and len(user_embedding) > 0:
         st.session_state.articles_data = load_articles_vector_search(user_embedding, offset=0, limit=5)
     else:
-        st.session_state.articles_data = load_articles_from_mongodb(offset=0, limit=5, collection=selected_collection)
+        st.session_state.articles_data = load_articles_from_mongodb(user_name=st.session_state.user_name, offset=0, limit=5, collection=selected_collection)
 
 if "article_content" not in st.session_state:
     st.session_state.article_content = [format_article(article) for article in st.session_state.articles_data]

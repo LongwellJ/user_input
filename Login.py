@@ -228,16 +228,6 @@ def format_article(article):
     """
     return article_html
 
-def load_articles_from_mongodb(offset=0, limit=5, collection=None):
-    try:
-        if collection is None:
-            # Default to "Critical Thinker" collection if none provided.
-            collection = db["Critical Thinker"]
-        articles = collection.find().skip(offset).limit(limit)
-        return list(articles)
-    except Exception as e:
-        st.error(f"Error loading articles from MongoDB: {e}")
-        return []
 
 
 def update_user_embedding(users_collection, user_name, article_response_array, feedback_score):
@@ -351,6 +341,74 @@ def load_latest_articles(user_name=None, limit=5):
         except Exception as e:
             st.error(f"Error loading latest articles: {e}")
             return []
+        
+# def load_articles_from_mongodb(offset=0, limit=5, collection=None):
+#     try:
+#         if collection is None:
+#             # Default to "Critical Thinker" collection if none provided.
+#             collection = db["Critical Thinker"]
+#         articles = collection.find().skip(offset).limit(limit)
+#         return list(articles)
+#     except Exception as e:
+#         st.error(f"Error loading articles from MongoDB: {e}")
+#         return []
+
+def load_articles_from_mongodb(user_name=None, offset=0, limit=5, collection=None):
+    """
+    Load articles from a MongoDB collection, optionally excluding previously rated articles.
+    
+    Args:
+    - user_name (str, optional): Username to filter out previously rated articles
+    - offset (int): Number of documents to skip
+    - limit (int): Number of documents to retrieve
+    - collection (MongoDB collection, optional): Collection to query
+    
+    Returns:
+    - List of articles
+    """
+    try:
+        # If no collection is provided, default to "Critical Thinker"
+        if collection is None:
+            collection = db["Critical Thinker"]
+        
+        # If a username is provided, exclude articles already rated
+        if user_name:
+            # Get IDs of articles user has already provided feedback on
+            feedback_article_ids = get_user_feedback_article_ids(user_name)
+            
+            # Construct a query to exclude these articles
+            query = {"_id": {"$nin": [ObjectId(article_id) for article_id in feedback_article_ids]}}
+            print(query)
+            # Retrieve new articles
+            articles = list(collection.find(query).skip(offset).limit(limit))
+            
+            # # If not enough articles, fill with additional articles
+            # if len(articles) < limit:
+            #     # Get additional article IDs to exclude
+            #     additional_excluded_ids = [ObjectId(article['_id']) for article in articles]
+            #     all_excluded_ids = list(set(
+            #         [ObjectId(article_id) for article_id in feedback_article_ids] + 
+            #         additional_excluded_ids
+            #     ))
+                
+            #     # Get additional articles
+            #     additional_query = {"_id": {"$nin": all_excluded_ids}}
+            #     additional_articles = list(
+            #         collection.find(additional_query).limit(limit - len(articles))
+            #     )
+                
+            #     # Combine the articles
+            #     articles.extend(additional_articles)
+            
+            return articles
+        else:
+            # If no username, just return articles normally
+            articles = list(collection.find().skip(offset).limit(limit))
+            return articles
+    
+    except Exception as e:
+        st.error(f"Error loading articles from MongoDB: {e}")
+        return []
     
 # --- Common CSS Styles ---
 def load_css():

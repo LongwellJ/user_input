@@ -10,8 +10,7 @@ from Login import(
     users_collection,
     update_user_embedding,
     load_latest_articles,
-    track_user_article_feedback,
-    load_latest_articles_excluding_feedback
+    track_user_article_feedback
 )
 import streamlit_analytics
 import uuid
@@ -34,7 +33,7 @@ if "latest_articles" not in st.session_state:
 if st.sidebar.button("Refresh Latest News"):
     st.session_state.latest_articles = load_latest_articles(username)
     st.session_state.latest_article_contents = [format_article(article) for article in st.session_state.latest_articles]
-    ###
+
 # Display latest articles with dates
 if not st.session_state.latest_articles:
     st.error("No articles available to display.")
