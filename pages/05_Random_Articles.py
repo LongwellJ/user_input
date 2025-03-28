@@ -21,7 +21,6 @@ import streamlit_analytics
 load_css()
 streamlit_analytics.start_tracking()
 st.title("Random Articles")
-
 # --- Load Random Articles ---
 if "random_articles" not in st.session_state:
     st.session_state.random_articles = load_random_articles(limit=5)
@@ -41,13 +40,27 @@ def clear_random_article_inputs():
         # Clear any feedback text
         if f'random_feedback_{i}_article' in st.session_state:
             st.session_state[f'random_feedback_{i}_article'] = ""
+        #clear highlight index    
+        if f'random_highlight_index_{i}' in st.session_state:
+            st.session_state[f'random_highlight_index_{i}'] = 0
+
+        #clear the feedback numbers for highlights    
+        for current_index in range(5):
+            if f'random_score_{i}_highlight_{current_index}' in st.session_state:
+                st.session_state[f'random_score_{i}_highlight_{current_index}'] = 0
+        #clear the feedback text for highlights
+        if f'random_feedback_{i}_highlight' in st.session_state:
+            st.session_state[f'random_feedback_{i}_highlight'] = ""
+
+def load_new_articles_and_scroll_to_top():
+    clear_random_article_inputs()
+    st.session_state.random_articles = load_random_articles(limit=5)
+    st.session_state.random_article_contents = [format_article(article) for article in st.session_state.random_articles]
+
 
 # Button to load new random articles
 if st.sidebar.button("Load New Random Articles"):
-    clear_random_article_inputs()
-
-    st.session_state.random_articles = load_random_articles(limit=5)
-    st.session_state.random_article_contents = [format_article(article) for article in st.session_state.random_articles]
+    load_new_articles_and_scroll_to_top()
 
 st.write("Assign a score to each item (1 = Strong Accept, 0 = Weak Accept, -1 = Reject):")
 
@@ -56,6 +69,7 @@ for i, article in enumerate(st.session_state.random_articles):
     col1, col2, col3 = st.columns([3, 2, 1])
     
     with col1:
+        st.session_state.random_article_contents = [format_article(article) for article in st.session_state.random_articles]
         st.markdown(st.session_state.random_article_contents[i], unsafe_allow_html=True)
     
     with col2:
@@ -94,7 +108,12 @@ for i, article in enumerate(st.session_state.random_articles):
     
     with col3:
         # Article scoring
-        score = st.number_input('Article Score', min_value=-1, max_value=1, value=0, key=f'random_score_{i}_article')
+        score = st.number_input('Article Score',
+            min_value=-1, 
+            max_value=1, 
+            value=0, 
+            key=f'random_score_{i}_article'
+        )
 
         # If score is -1, allow feedback
         if score == -1:

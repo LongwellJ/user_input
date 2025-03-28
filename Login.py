@@ -4,6 +4,8 @@ import uuid
 from bs4 import BeautifulSoup
 import pymongo
 import streamlit_analytics
+from datetime import datetime
+from bson.objectid import ObjectId
 
 # --- MongoDB Setup ---
 MONGO_URI = st.secrets["MONGO"]["uri"]
@@ -17,9 +19,10 @@ rankings_collection = db["rankings"]  # MongoDB collection for rankings
 satisfaction_collection = db["satisfaction"]  # MongoDB collection for satisfaction
 users_collection = db["users"]  # MongoDB collection for users
 highlight_feedback_collection = db["highlight_feedback"]
+user_article_feedback_collection = db["user_article_feedback"]
 
 def clear_article_session_data():
-    session_keys = ["articles_data", "article_content", "articles_offset"]
+    session_keys = ["articles_data", "article_content", "articles_offset", "latest_articles", "latest_articles_offset", "random_article_contents", "random_articles" "popular_articles", "popular_article_contents",]
     for key in session_keys:
         if key in st.session_state:
             del st.session_state[key]
@@ -81,6 +84,92 @@ def load_articles_vector_search(user_embedding, offset=0, limit=5):
         return results
     except Exception as e:
         st.error(f"Error loading articles with vector search: {e}")
+        return []
+
+def track_user_article_feedback(user_name, article_id, feedback_type):
+    """
+    Track user's feedback on a specific article.
+    
+    Args:
+    - user_name (str): Username of the user
+    - article_id (str): Unique identifier of the article
+    - feedback_type (str): Type of feedback (e.g., 'ranking', 'highlight')
+    """
+    try:
+        # Check if feedback already exists
+        existing_feedback = user_article_feedback_collection.find_one({
+            "user_name": user_name,
+            "article_id": str(article_id),
+            "feedback_type": feedback_type
+        })
+        
+        if not existing_feedback:
+            # If no existing feedback, insert a new document
+            feedback_record = {
+                "user_name": user_name,
+                "article_id": str(article_id),
+                "feedback_type": feedback_type,
+                "timestamp": datetime.now()
+            }
+            user_article_feedback_collection.insert_one(feedback_record)
+    except Exception as e:
+        st.error(f"Error tracking user article feedback: {e}")
+
+def get_user_feedback_article_ids(user_name, feedback_type=None):
+    """
+    Retrieve article IDs that the user has already provided feedback on.
+    
+    Args:
+    - user_name (str): Username of the user
+    - feedback_type (str, optional): Specific type of feedback to filter
+    
+    Returns:
+    - List of article IDs
+    """
+    try:
+        query = {"user_name": user_name}
+        if feedback_type:
+            query["feedback_type"] = feedback_type
+        
+        # Retrieve all article IDs with feedback
+        feedback_records = user_article_feedback_collection.find(query)
+        return [record["article_id"] for record in feedback_records]
+    except Exception as e:
+        st.error(f"Error retrieving user feedback article IDs: {e}")
+        return []
+
+def load_articles_excluding_feedback(user_name, limit=5):
+    """
+    Load articles excluding those the user has already given feedback on.
+    
+    Args:
+    - user_name (str): Username of the user
+    - limit (int): Number of articles to retrieve
+    
+    Returns:
+    - List of articles
+    """
+    try:
+        # Get IDs of articles user has already provided feedback on
+        feedback_article_ids = get_user_feedback_article_ids(user_name)
+        
+        # Construct a query to exclude these articles
+        query = {"_id": {"$nin": [ObjectId(article_id) for article_id in feedback_article_ids]}}
+        
+        # Retrieve new articles
+        new_articles = list(top_stories.find(query).limit(limit))
+        
+        # If not enough articles, fill with random articles
+        # if len(new_articles) < limit:
+        #     additional_articles = list(top_stories.aggregate([
+        #         {"$match": {"_id": {"$nin": [ObjectId(article_id) for article_id in feedback_article_ids]}}},
+        #         {"$sample": {"size": limit - len(new_articles)}}
+        #     ]))
+        #     new_articles.extend(additional_articles)
+        
+        return new_articles
+    except Exception as e:
+        st.error(f"Error loading articles excluding feedback: {e}")
         return []
     
 
@@ -232,18 +321,37 @@ def load_random_articles(limit=5):
         st.error(f"Error loading random articles from MongoDB: {e}")
         return []
 
-def load_latest_articles(limit=5):
-    try:
-        # Get the top_stories collection
-        top_stories = db["top_stories"]
-        # Query articles sorted by published date in descending order (newest first)
-        latest_articles = list(
-            top_stories.find().sort("published", -1).limit(limit)
-        )
-        return latest_articles
-    except Exception as e:
-        st.error(f"Error loading latest articles: {e}")
-        return []
+# def load_latest_articles(limit=5):
+#     try:
+#         # Get the top_stories collection
+#         top_stories = db["top_stories"]
+#         # Query articles sorted by published date in descending order (newest first)
+#         latest_articles = list(
+#             top_stories.find().sort("published", -1).limit(limit)
+#         )
+#         return latest_articles
+#     except Exception as e:
+#         st.error(f"Error loading latest articles: {e}")
+#         return []
+    
+
+# article loading function
+def load_latest_articles(user_name=None, limit=5):
+    if user_name:
+        # Use the new function that excludes previously rated articles
+        return load_articles_excluding_feedback(user_name, limit)
+    else:
+        try:
+            # Get the top_stories collection
+            top_stories = db["top_stories"]
+            # Query articles sorted by published date in descending order (newest first)
+            latest_articles = list(
+                top_stories.find().sort("published", -1).limit(limit)
+            )
+            return latest_articles
+        except Exception as e:
+            st.error(f"Error loading latest articles: {e}")
+            return []
     
 # --- Common CSS Styles ---
 def load_css():
@@ -296,7 +404,6 @@ if "needs_initialization" not in st.session_state:
 # --- Home Page (User Form) ---
 def main():
     st.set_page_config(page_title="Login", layout="wide")
-
     st.title("Read My Sources")
     load_css()
     user_name = st.text_input("Enter your username:", value=st.session_state.user_name)

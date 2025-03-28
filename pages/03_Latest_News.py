@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from Login import client, db, format_article, load_css, rankings_collection, satisfaction_collection, highlight_feedback_collection, users_collection, update_user_embedding, load_latest_articles
+from Login import format_article, load_css, rankings_collection, satisfaction_collection, highlight_feedback_collection, users_collection, update_user_embedding, load_latest_articles, track_user_article_feedback
 import streamlit_analytics
 import uuid
 
@@ -9,17 +9,21 @@ import uuid
 load_css()
 streamlit_analytics.start_tracking()
 st.title("Latest News")
-    
+
+try:
+    username = st.session_state.get("user_name")
+except:
+    username = None
 # Initialize session state for latest articles if not exists
 if "latest_articles" not in st.session_state:
-    st.session_state.latest_articles = load_latest_articles()
+    st.session_state.latest_articles = load_latest_articles(username)
     st.session_state.latest_article_contents = [format_article(article) for article in st.session_state.latest_articles]
 
 # Button to refresh latest articles
 if st.sidebar.button("Refresh Latest News"):
-    st.session_state.latest_articles = load_latest_articles()
+    st.session_state.latest_articles = load_latest_articles(username)
     st.session_state.latest_article_contents = [format_article(article) for article in st.session_state.latest_articles]
-
+    ###
 # Display latest articles with dates
 if not st.session_state.latest_articles:
     st.error("No articles available to display.")
@@ -145,6 +149,13 @@ if st.button("Submit Article Scores"):
         rankings = []
         for i, article in enumerate(st.session_state.latest_articles):
             score = st.session_state.get(f'score_{i}_article')
+
+            # Track article ranking feedback
+            track_user_article_feedback(
+                st.session_state.user_name, 
+                article.get("_id"), 
+                "ranking"
+            )
             ranking_data = {
                 "title": article.get("title"),
                 "rank": score,
@@ -210,7 +221,7 @@ articles_per_page = st.sidebar.slider("Articles per load:", 5, 20, 10)
 
 if st.sidebar.button("Load More Articles"):
     current_count = len(st.session_state.latest_articles)
-    new_articles = load_latest_articles(current_count + articles_per_page)
+    new_articles = load_latest_articles(username, current_count + articles_per_page)
     
     if len(new_articles) > current_count:
         st.session_state.latest_articles = new_articles
