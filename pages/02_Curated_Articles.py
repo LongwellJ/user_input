@@ -58,14 +58,32 @@ elif persona == "Balanced Evaluator":
 if "articles_data" not in st.session_state:
     if feedback_count >= 5 and isinstance(user_embedding, list) and len(user_embedding) > 0:
         st.session_state.articles_data = load_articles_vector_search(user_name=st.session_state.user_name, user_embedding=user_embedding, offset=0, limit=5)
+        st.markdown("*These articles are tailored to your interests using advanced matching*")
     else:
         st.session_state.articles_data = load_articles_from_mongodb(user_name=st.session_state.user_name, offset=0, limit=5, collection=selected_collection)
-
+        st.markdown(f"*Recommendations matched to your persona*")
 if "article_content" not in st.session_state:
     st.session_state.article_content = [format_article(article) for article in st.session_state.articles_data]
 
 if "articles_offset" not in st.session_state:
     st.session_state.articles_offset = 5
+
+
+# Button to refresh latest articles
+if st.sidebar.button("Refresh Curated Articles"):
+    # Get the updated user embedding
+    user_embedding = users_collection.find_one({"username": st.session_state.user_name}).get("user_embedding", [])
+    print("This is the user_embedding", user_embedding)
+    # Reset the articles data and content
+    st.session_state.articles_data = []
+    st.session_state.article_content = []
+    # Reset the offset for loading more articles
+    st.session_state.articles_offset = 5
+    if feedback_count >= 5 and isinstance(user_embedding, list) and len(user_embedding) > 0:
+        st.session_state.articles_data = load_articles_vector_search(user_name=st.session_state.user_name, user_embedding=user_embedding, offset=0, limit=5)
+    else:
+        st.session_state.articles_data = load_articles_from_mongodb(user_name=st.session_state.user_name, offset=0, limit=5, collection=selected_collection)
+    st.session_state.article_content = [format_article(article) for article in st.session_state.articles_data]
 
 # --- Sidebar: Load More Button ---
 if st.sidebar.button("Load More"):
@@ -234,6 +252,7 @@ if st.button("Submit Article Scores"):
                         article['response_array'],
                         score
                     )
+                    # st.session_state.user_embedding = updated_embedding
                 except Exception as e:
                     st.error(f"Error updating user embedding for article {i+1}: {e}")
         

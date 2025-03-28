@@ -6,7 +6,8 @@ import pymongo
 import streamlit_analytics
 from datetime import datetime
 from bson.objectid import ObjectId
-
+import numpy as np
+import math
 # --- MongoDB Setup ---
 MONGO_URI = st.secrets["MONGO"]["uri"]
 if not MONGO_URI:
@@ -20,7 +21,18 @@ satisfaction_collection = db["satisfaction"]  # MongoDB collection for satisfact
 users_collection = db["users"]  # MongoDB collection for users
 highlight_feedback_collection = db["highlight_feedback"]
 user_article_feedback_collection = db["user_article_feedback"]
-
+initial_centroids = np.array([
+    [1, 1, 3, 3, 4, 1, 3, 3, 1, 1, 3],  # DATA-DRIVEN Analyst
+    [4, 4, 3, 4, 4, 4, 3, 3, 4, 4, 3],  # engaging storyteller
+    [2, 2, 3, 3, 4, 2, 3, 3, 2, 2, 3],  # critical thinker
+    [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]   # Balanced Evaluator
+])
+persona_index = {
+    "DATA-DRIVEN Analyst": 0,
+    "Engaging Storyteller": 1,
+    "Critical Thinker": 2,
+    "Balanced Evaluator": 3
+}
 def clear_article_session_data():
     session_keys = ["articles_data", "article_content", "articles_offset", "latest_articles", "latest_articles_offset", "random_article_contents", "random_articles" "popular_articles", "popular_article_contents",]
     for key in session_keys:
@@ -249,7 +261,40 @@ def format_article(article):
     """
     return article_html
 
-
+def update_negative_embedding_combined(current_embedding, article_response_array, global_embedding_centroid):
+    """
+    Combine multiple strategies for more robust negative feedback update.
+    
+    Args:
+    - current_embedding: Current user embedding
+    - article_response_array: Embedding of the current article
+    - global_embedding_centroid: Average embedding of all articles
+    
+    Returns:
+    - Updated embedding
+    """
+    # Calculate Euclidean distance
+    distance = math.sqrt(
+        sum((current_embedding[i] - article_response_array[i])**2 for i in range(len(current_embedding)))
+    )
+    
+    # Randomized perturbation
+    perturbation = np.random.normal(
+        loc=0, 
+        scale=0.3,  # Controlled randomness
+        size=len(current_embedding)
+    )
+    
+    # Combine multiple strategies
+    updated_embedding = [
+        current_embedding[i] + 
+        0.4 * (global_embedding_centroid[i] - article_response_array[i]) +  # Global centroid push
+        0.3 * (current_embedding[i] - article_response_array[i]) * (1 / (1 + distance)) +  # Distance-scaled push
+        0.3 * perturbation[i]  # Random perturbation
+        for i in range(len(current_embedding))
+    ]
+    
+    return updated_embedding
 
 def update_user_embedding(users_collection, user_name, article_response_array, feedback_score):
     """
@@ -266,7 +311,7 @@ def update_user_embedding(users_collection, user_name, article_response_array, f
     """
     # Find the current user
     user_data = users_collection.find_one({"username": user_name})
-    
+    persona_index_value = persona_index.get(user_data.get("persona", None), 0)
     if not user_data:
         st.error(f"User {user_name} not found.")
         return None
@@ -284,13 +329,8 @@ def update_user_embedding(users_collection, user_name, article_response_array, f
         feedback_count = 1
     else:
         if feedback_score == -1:
-            # Negative feedback: push the embedding away from the current article's embedding
-            # Use a negative learning rate to move in the opposite direction
-            negative_learning_rate = -0.5  # Adjust this value as needed
-            new_embedding = [
-                current_embedding[i] + (negative_learning_rate * (current_embedding[i] - article_response_array[i]))
-                for i in range(len(current_embedding))
-            ]
+            new_embedding = update_negative_embedding_combined(current_embedding=current_embedding, article_response_array=article_response_array, global_embedding_centroid=initial_centroids[persona_index_value])
+            print("Negative feedback received. Updated embedding:", new_embedding)
             feedback_count += 1
         elif feedback_score == 1:
             # Positive feedback: double the weight
