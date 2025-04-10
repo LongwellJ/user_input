@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from streamlit_extras.switch_page_button import switch_page
 
 from Login import (
     client, db, users_collection, format_article, load_css,
@@ -316,4 +315,3 @@ if st.button("Save My Preferences", type="primary"):
         st.rerun()
         # if st.button("Start Exploring Articles"):
         #     # st.session_state.needs_initialization = False
-        #     switch_page("02_Curated_Articles")
