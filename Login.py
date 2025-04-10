@@ -311,7 +311,7 @@ def update_user_embedding(users_collection, user_name, article_response_array, f
     """
     # Find the current user
     user_data = users_collection.find_one({"username": user_name})
-    persona_index_value = persona_index.get(user_data.get("persona", None), 0)
+    persona_index_value = persona_index.get(user_data.get("persona", None), 3)
     if not user_data:
         st.error(f"User {user_name} not found.")
         return None
