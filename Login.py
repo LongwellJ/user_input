@@ -34,10 +34,11 @@ persona_index = {
     "Balanced Evaluator": 3
 }
 def clear_article_session_data():
-    session_keys = ["articles_data", "article_content", "articles_offset", "latest_articles", "latest_articles_offset", "random_article_contents", "random_articles" "popular_articles", "popular_article_contents",]
+    session_keys = ["articles_data", "article_content", "articles_offset", "latest_articles", "latest_articles_offset", "random_article_contents", "random_articles", "popular_articles", "popular_article_contents"]
     for key in session_keys:
         if key in st.session_state:
             del st.session_state[key]
+
 # --- User Authentication Function ---
 def authenticate_user(username):
     """Check if the username exists in the users collection"""
@@ -48,6 +49,43 @@ def check_user_initialized(username):
     """Check if the user has completed initialization (has a persona)"""
     user = users_collection.find_one({"username": username})
     return user is not None and "persona" in user
+
+def get_user_publishers(username):
+    """Get the user's publishers data from MongoDB"""
+    user = users_collection.find_one({"username": username})
+    if user and "user_interests" in user and "publishers" in user["user_interests"]:
+        return user["user_interests"]["publishers"]
+    # Return empty default publishers dictionary if not found
+    return {"TC": [], "W": [], "MG": []}
+
+def update_session_with_user_data(username):
+    """Update session state with all necessary user data after login"""
+    user = users_collection.find_one({"username": username})
+    if user:
+        # Store user's persona in session state if it exists
+        if "persona" in user:
+            st.session_state.user_persona = user["persona"]
+        
+        # Store user's embedding in session state if it exists
+        if "user_embedding" in user:
+            st.session_state.user_embedding = user["user_embedding"]
+        
+        # Store user's publishers data in session state if it exists
+        if "user_interests" in user:
+            # Store the entire user_interests object
+            st.session_state.user_interests = user["user_interests"]
+            
+            # Also store publishers separately for easy access
+            if "publishers" in user["user_interests"]:
+                st.session_state.publishers = user["user_interests"]["publishers"]
+            else:
+                st.session_state.publishers = {"TC": [], "W": [], "MG": []}
+        else:
+            st.session_state.publishers = {"TC": [], "W": [], "MG": []}
+            st.session_state.user_interests = {}
+        
+        return True
+    return False
 
 # --- Common Functions ---
 def clean_html(raw_html):
@@ -191,13 +229,6 @@ def load_latest_articles_excluding_feedback(user_name, limit=5):
         
         # Retrieve new articles
         new_articles = list(top_stories.find(query).sort("published", -1).limit(limit))
-        # If not enough articles, fill with random articles
-        # if len(new_articles) < limit:
-        #     additional_articles = list(top_stories.aggregate([
-        #         {"$match": {"_id": {"$nin": [ObjectId(article_id) for article_id in feedback_article_ids]}}},
-        #         {"$sample": {"size": limit - len(new_articles)}}
-        #     ]))
-        #     new_articles.extend(additional_articles)
         
         return new_articles
     except Exception as e:
@@ -360,30 +391,18 @@ def update_user_embedding(users_collection, user_name, article_response_array, f
         }
     )
     
+    # Also update session state with the new embedding
+    st.session_state.user_embedding = new_embedding
+    
     return new_embedding
 
 def load_random_articles(limit=5):
     try:
-
         random_articles = list(top_stories.aggregate([{"$sample": {"size": limit}}]))
         return random_articles
     except Exception as e:
         st.error(f"Error loading random articles from MongoDB: {e}")
         return []
-
-# def load_latest_articles(limit=5):
-#     try:
-#         # Get the top_stories collection
-#         top_stories = db["top_stories"]
-#         # Query articles sorted by published date in descending order (newest first)
-#         latest_articles = list(
-#             top_stories.find().sort("published", -1).limit(limit)
-#         )
-#         return latest_articles
-#     except Exception as e:
-#         st.error(f"Error loading latest articles: {e}")
-#         return []
-    
 
 # article loading function
 def load_latest_articles(user_name=None, limit=5):
@@ -402,17 +421,6 @@ def load_latest_articles(user_name=None, limit=5):
         except Exception as e:
             st.error(f"Error loading latest articles: {e}")
             return []
-        
-# def load_articles_from_mongodb(offset=0, limit=5, collection=None):
-#     try:
-#         if collection is None:
-#             # Default to "Critical Thinker" collection if none provided.
-#             collection = db["Critical Thinker"]
-#         articles = collection.find().skip(offset).limit(limit)
-#         return list(articles)
-#     except Exception as e:
-#         st.error(f"Error loading articles from MongoDB: {e}")
-#         return []
 
 def load_articles_from_mongodb(user_name=None, offset=0, limit=5, collection=None):
     """
@@ -442,24 +450,6 @@ def load_articles_from_mongodb(user_name=None, offset=0, limit=5, collection=Non
             print(query)
             # Retrieve new articles
             articles = list(collection.find(query).skip(offset).limit(limit))
-            
-            # # If not enough articles, fill with additional articles
-            # if len(articles) < limit:
-            #     # Get additional article IDs to exclude
-            #     additional_excluded_ids = [ObjectId(article['_id']) for article in articles]
-            #     all_excluded_ids = list(set(
-            #         [ObjectId(article_id) for article_id in feedback_article_ids] + 
-            #         additional_excluded_ids
-            #     ))
-                
-            #     # Get additional articles
-            #     additional_query = {"_id": {"$nin": all_excluded_ids}}
-            #     additional_articles = list(
-            #         collection.find(additional_query).limit(limit - len(articles))
-            #     )
-                
-            #     # Combine the articles
-            #     articles.extend(additional_articles)
             
             return articles
         else:
@@ -514,10 +504,8 @@ if "user_name" not in st.session_state:
     st.session_state.user_name = ""
 if "needs_initialization" not in st.session_state:
     st.session_state.needs_initialization = False
-# if "random_article_contents" in st.session_state:
-#     st.session_state.random_article_contents = []
-# if "articles_data" in st.session_state:
-#     st.session_state.articles_data = []
+if "publishers" not in st.session_state:
+    st.session_state.publishers = {"TC": [], "W": [], "MG": []}
         
 # --- Home Page (User Form) ---
 def main():
@@ -535,10 +523,15 @@ def main():
             # Check if user exists in the MongoDB collection
             if authenticate_user(user_name):
                 st.session_state.is_valid_user = True
+                
+                # Update session with all necessary user data including publishers
+                update_session_with_user_data(user_name)
         
                 # Check if the user has a persona
                 if check_user_initialized(user_name):
                     st.success(f"Welcome back, {user_name}! You can now access the curated articles.")
+                    # Display the publishers data that's now available in session state
+                    st.write("Your publisher preferences are loaded and ready to use.")
                     st.write("Please use the navigation to view articles.")
                 else:
                     st.session_state.needs_initialization = True
@@ -554,52 +547,6 @@ def main():
             for key in st.session_state.keys():
                 del st.session_state[key]
             st.warning("Logged out")
-            
-    # # Admin panel for user management
-    # with st.expander("Admin Panel"):
-    #     st.write("Add a new user to the system:")
-    #     new_username = st.text_input("New username:")
-    #     if st.button("Add User"):
-    #         if new_username:
-    #             # Check if the user already exists
-    #             existing_user = users_collection.find_one({"username": new_username})
-    #             if existing_user:
-    #                 st.error(f"Username '{new_username}' already exists!")
-    #             else:
-    #                 # Add the new user to the MongoDB collection without a persona
-    #                 users_collection.insert_one({
-    #                     "username": new_username, 
-    #                     "created_at": pd.Timestamp.now()
-    #                 })
-    #                 st.success(f"User '{new_username}' added successfully! The user will need to complete initialization.")
-    #         else:
-    #             st.error("Please enter a username.")
-        
-    #     st.write("Current registered users:")
-    #     try:
-    #         users = list(users_collection.find({}, {"username": 1, "persona": 1, "_id": 0}))
-    #         if users:
-    #             user_df = pd.DataFrame(users)
-    #             st.dataframe(user_df)
-    #         else:
-    #             st.info("No users registered yet.")
-    #     except Exception as e:
-    #         st.error(f"Error loading users: {e}")
-        
-    #     st.write("Delete a user:")
-    #     delete_username = st.text_input("Enter username to delete:")
-    #     if st.button("Delete User"):
-    #         if delete_username:
-    #             # Check if user exists
-    #             existing_user = users_collection.find_one({"username": delete_username})
-    #             if existing_user:
-    #                 users_collection.delete_one({"username": delete_username})
-    #                 st.success(f"User '{delete_username}' deleted successfully!")
-    #             else:
-    #                 st.error(f"Username '{delete_username}' does not exist!")
-    #         else:
-    #             st.error("Please enter a username to delete.")
-       
 
 if __name__ == "__main__":
     main()

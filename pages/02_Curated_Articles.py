@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import uuid
 from datetime import datetime, timedelta
+from bson.objectid import ObjectId
 from Login import (
     client, 
     db, 
@@ -34,6 +35,13 @@ if not st.session_state.get("is_valid_user", False) or not authenticate_user(st.
 
 # --- Get User Profile ---
 user_data = users_collection.find_one({"username": st.session_state.user_name})
+
+# Check if user has completed the initialization process with publishers data
+if not user_data or "user_interests" not in user_data or "publishers" not in user_data.get("user_interests", {}):
+    st.error("You need to complete the initialization process first.")
+    st.info("Please go to the Initialization page to set your preferences.")
+    st.stop()
+
 feedback_count = user_data.get("feedback_count", 0)
 user_embedding = user_data.get("user_embedding", [])
 # For non-vector search queries, show the latest news from the top_stories collection
@@ -71,18 +79,64 @@ else:  # All time
     start_date = datetime(1970, 1, 1)  # Very old date to get all articles
 
 def load_articles_with_date_filter(user_name, user_embedding, offset, limit, start_date, end_date, feedback_count, selected_collection):
-    """Load articles with date filtering"""
+    """Load articles with date filtering and publisher preferences"""
     try:
         # Get IDs of articles user has already provided feedback on
         feedback_article_ids = get_user_feedback_article_ids(user_name)
         
         # Convert feedback article IDs to ObjectId
-        from bson.objectid import ObjectId
         feedback_article_ids = [ObjectId(article_id) for article_id in feedback_article_ids]
+        
+        # Get user's publisher preferences
+        user_data = users_collection.find_one({"username": user_name})
+        user_interests = user_data.get("user_interests", {})
+        
+        # # Get TC, W, and MG preferences
+        # tc_tags = user_interests.get("TC", [])
+        # w_tags = user_interests.get("W", [])
+        # mg_tags = user_interests.get("MG", [])
+        
+        # Create tags condition for TC and MG publishers
+        # combined_tags = tc_tags + w_tags
+        # tags_condition = {"tags": {"$in": combined_tags}} if combined_tags else {}
+        
+        # Create link condition for MG publisher
+        # Convert MG tags to URL-friendly format (lowercase, hyphenated)
+        # mg_url_patterns = []
+        # for tag in mg_tags:
+        #     # Convert spaces to hyphens and make lowercase
+        #     url_pattern = tag.lower().replace(" ", "-")
+        #     mg_url_patterns.append(url_pattern)
+        
+        # link_condition = {"true_link": {"$regex": "|".join(mg_url_patterns)}} if mg_url_patterns else {}
+        
+        # # Combine conditions with $or if both are present
+        # publisher_filter = {}
+        # if tags_condition and link_condition:
+        #     publisher_filter = {"$or": [tags_condition, link_condition]}
+        # elif tags_condition:
+        #     publisher_filter = tags_condition
+        # elif link_condition:
+        #     publisher_filter = link_condition
         
         # Choose loading method based on feedback count and embedding
         if feedback_count >= 5 and isinstance(user_embedding, list) and len(user_embedding) > 0:
-            # Vector search with date filter - move vectorSearch to first position
+            # Vector search with date filter and publisher preferences
+            match_condition = {
+                "_id": {"$nin": feedback_article_ids},
+                "published": {
+                    "$gte": start_date,
+                    "$lte": end_date
+                }
+            }
+            
+            # # Add publisher filter if available
+            # if publisher_filter:
+            #     if "$or" in publisher_filter:
+            #         match_condition["$or"] = publisher_filter["$or"]
+            #     else:
+            #         match_condition.update(publisher_filter)
+            
             pipeline = [
                 {
                     "$vectorSearch": {
@@ -94,13 +148,7 @@ def load_articles_with_date_filter(user_name, user_embedding, offset, limit, sta
                     }
                 },
                 {
-                    "$match": {
-                        "_id": {"$nin": feedback_article_ids},
-                        "published": {
-                            "$gte": start_date,
-                            "$lte": end_date
-                        }
-                    }
+                    "$match": match_condition
                 },
                 {
                     "$skip": offset
@@ -131,7 +179,7 @@ def load_articles_with_date_filter(user_name, user_embedding, offset, limit, sta
             print(offset, limit, start_date, end_date, feedback_count, selected_collection)
             return results
         else:
-            # Regular collection query with date filter from top_stories
+            # Regular collection query with date filter and publisher preferences
             query = {
                 "_id": {"$nin": feedback_article_ids},
                 "published": {
@@ -139,6 +187,14 @@ def load_articles_with_date_filter(user_name, user_embedding, offset, limit, sta
                     "$lte": end_date
                 }
             }
+            
+            # # Add publisher filter if available
+            # if publisher_filter:
+            #     if "$or" in publisher_filter:
+            #         query["$or"] = publisher_filter["$or"]
+            #     else:
+            #         query.update(publisher_filter)
+            
             articles = list(selected_collection.find(query).skip(offset).limit(limit))
             return articles
     except Exception as e:
