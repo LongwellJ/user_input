@@ -32,27 +32,12 @@ if not st.session_state.get("is_valid_user", False) or not authenticate_user(st.
     st.write("Please go back to the home page and enter a valid username.")
     st.stop()
 
-# --- Determine the Collection Based on User's Persona ---
-# Get the user's profile from the users collection
+# --- Get User Profile ---
 user_data = users_collection.find_one({"username": st.session_state.user_name})
-
-# Default to "Critical Thinker" if no persona is found
-persona = user_data.get("persona", None)
-if persona is None:
-    st.error("No persona found for the user. Please go to the initialization page or provide article feedback on the other pages.")
-    st.stop()
 feedback_count = user_data.get("feedback_count", 0)
 user_embedding = user_data.get("user_embedding", [])
-
-# Map persona to the corresponding collection (for non-vector search)
-if persona == "Data-Driven Analyst":
-    selected_collection = db["Data-Driven Analyst"]
-elif persona == "Engaging Storyteller":
-    selected_collection = db["Engaging Storyteller"]
-elif persona == "Critical Thinker":
-    selected_collection = db["Critical Thinker"]
-elif persona == "Balanced Evaluator":
-    selected_collection = db["Balanced Evaluator"]
+# For non-vector search queries, show the latest news from the top_stories collection
+selected_collection = db["top_stories"]
 
 # --- Add Date Filter UI ---
 col1, col2 = st.columns([2, 1])
@@ -146,7 +131,7 @@ def load_articles_with_date_filter(user_name, user_embedding, offset, limit, sta
             print(offset, limit, start_date, end_date, feedback_count, selected_collection)
             return results
         else:
-            # Regular collection query with date filter
+            # Regular collection query with date filter from top_stories
             query = {
                 "_id": {"$nin": feedback_article_ids},
                 "published": {
@@ -195,7 +180,7 @@ if st.session_state.last_date_filter != (start_date, end_date) or "articles_data
     if feedback_count >= 5 and isinstance(user_embedding, list) and len(user_embedding) > 0:
         st.markdown("*These articles are tailored to your interests using advanced matching*")
     else:
-        st.markdown(f"*Recommendations matched to your persona*")
+        st.markdown("*Latest news from top stories*")
 
 # Display date range information
 st.info(f"Showing articles from {start_date.strftime('%b %d, %Y')} to {end_date.strftime('%b %d, %Y')}")
@@ -300,9 +285,7 @@ def update_rankings(changed_index, new_rank):
     
     # Update the display order based on rankings
     articles_with_ranks = [(i, rank) for i, rank in enumerate(st.session_state.article_rankings)]
-    # Sort by rank (second element in tuple)
     articles_with_ranks.sort(key=lambda x: x[1])
-    # Extract the sorted indices
     st.session_state.display_order = [idx for idx, _ in articles_with_ranks]
 
 # --- Display Articles in Rank Order ---
@@ -311,45 +294,33 @@ if not st.session_state.articles_data:
 else:
     st.write("Assign a score to each item (1 = Strong Accept, 0 = Weak Accept, -1 = Reject) and rank them in order of importance:")
     
-    # Sort articles based on their ranks for display
     if "display_order" not in st.session_state or len(st.session_state.display_order) != len(st.session_state.articles_data):
         st.session_state.display_order = list(range(len(st.session_state.articles_data)))
     
-    # Create a button to sort articles by rank
     if st.button("Sort Articles by Rank"):
-        # Create tuples of (index, rank)
         articles_with_ranks = [(i, rank) for i, rank in enumerate(st.session_state.article_rankings)]
-        # Sort by rank (second element in tuple)
         articles_with_ranks.sort(key=lambda x: x[1])
-        # Extract the sorted indices
         st.session_state.display_order = [idx for idx, _ in articles_with_ranks]
         st.success("Articles sorted by rank")
     
-    # Iterate through articles in the display order
     for display_idx, article_idx in enumerate(st.session_state.display_order):
-        # Make sure article_idx is within range
         if article_idx >= len(st.session_state.articles_data):
             continue
             
         article = st.session_state.articles_data[article_idx]
-        
-        # Create four columns: article, highlights, scoring, and ranking
         col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
     
         with col1:
             st.markdown(st.session_state.article_content[article_idx], unsafe_allow_html=True)
         
         with col2:
-            # Get the highlights data; expect a list of strings.
             highlights = article.get("highlights", [])
             if isinstance(highlights, list) and len(highlights) > 0:
                 total_highlights = len(highlights)
-                # Set a unique key for the current article's highlight index in session state
                 highlight_key = f'curated_highlight_index_{article_idx}'
                 if highlight_key not in st.session_state:
                     st.session_state[highlight_key] = 0
                 current_index = st.session_state[highlight_key]
-                # Get the current highlight and truncate if needed
                 current_highlight = highlights[current_index]
                 if len(current_highlight) > 250:
                     current_highlight = current_highlight[:250] + '...'
@@ -358,9 +329,7 @@ else:
                 current_highlight = "no highlights available"
                 highlight_count_text = ""
             
-            # Get the article URL from the article
             url = article.get("link", "#")
-            # Display the highlight card with "Highlights:" label, the count, and the highlight text.
             st.markdown(f"""
                 <a href="{url}" target="_blank">
                     <div class="article-card">
@@ -374,18 +343,12 @@ else:
             """, unsafe_allow_html=True)
         
         with col3:
-            # Article scoring
             score = st.number_input('Article Score', min_value=-1, max_value=1, value=0, key=f'score_{article_idx}_article')
-
-            # If score is -1, allow feedback
             if score == -1:
                 feedback = st.text_area(f"Feedback for article", key=f'feedback_{article_idx}_article', height=80)
             
-            # Add highlight feedback in the same column
             if isinstance(highlights, list) and len(highlights) > 0:
                 current_index = st.session_state.get(f'curated_highlight_index_{article_idx}', 0)
-                
-                # Score for current highlight
                 highlight_score = st.number_input(
                     'Highlight Score', 
                     min_value=-1, 
@@ -394,7 +357,6 @@ else:
                     key=f'score_{article_idx}_highlight_{current_index}'
                 )
                 
-                # Feedback text area for highlight (shorter height to save space)
                 if highlight_score == -1:
                     highlight_feedback = st.text_area(
                         "Feedback for highlight", 
@@ -404,7 +366,6 @@ else:
                 else:
                     highlight_feedback = ""
                 
-                # Submit button for highlight feedback
                 if st.button("Submit Highlight Score", key=f'curated_submit_highlight_{article_idx}_{current_index}'):
                     if not st.session_state.get("user_name"):
                         st.error("Please validate your name on the Login page before submitting feedback.")
@@ -431,26 +392,20 @@ else:
                         except Exception as e:
                             st.error(f"Error saving highlight score: {e}")
 
-                # If there are multiple highlights, show the "Next Highlight" button.
                 if isinstance(highlights, list) and len(highlights) > 1:
                     if st.button("Next Highlight", key=f'curated_next_highlight_{article_idx}'):
                         st.session_state[highlight_key] = (st.session_state[highlight_key] + 1) % total_highlights
                         st.rerun()
         
         with col4:
-            # Get the current rank for this article from session state
             if article_idx < len(st.session_state.article_rankings):
                 current_rank = st.session_state.article_rankings[article_idx]
             else:
-                # If for some reason the ranking isn't in session state, default to position + 1
                 current_rank = article_idx + 1
                 if len(st.session_state.article_rankings) == article_idx:
                     st.session_state.article_rankings.append(current_rank)
             
-            # Create a number input for the rank
             st.markdown("### Rank")
-            
-            # Create number input for article ranking
             article_count = len(st.session_state.articles_data)
             new_rank = st.number_input(
                 "Position", 
@@ -460,18 +415,13 @@ else:
                 key=f'rank_{article_idx}_article'
             )
             
-            # Handle rank changes
             if new_rank != current_rank:
                 update_rankings(article_idx, new_rank)
                 st.rerun()
             
-            # Display current rank
             st.markdown(f"**Current Rank: {current_rank}**")
-            
-            # Display current display position
             display_position = st.session_state.display_order.index(article_idx) + 1 if article_idx in st.session_state.display_order else "Unknown"
             st.markdown(f"**Display Position: {display_position}**")
-
 
 # --- Submit Rankings Button ---
 if st.button("Submit Article Scores and Rankings"):
@@ -479,12 +429,12 @@ if st.button("Submit Article Scores and Rankings"):
         st.error("Please validate your name on the Login page before submitting scores.")
     else:
         submission_id = str(uuid.uuid4())
+        submission_timestamp = datetime.now()
         rankings = []
         for i, article in enumerate(st.session_state.articles_data):
             score = st.session_state.get(f'score_{i}_article')
             rank_position = st.session_state.article_rankings[i] if i < len(st.session_state.article_rankings) else i + 1
 
-            # Track article ranking feedback
             track_user_article_feedback(
                 st.session_state.user_name, 
                 article.get("_id"), 
@@ -496,6 +446,9 @@ if st.button("Submit Article Scores and Rankings"):
                 "score": score,
                 "rank_position": rank_position,
                 "submission_id": submission_id,
+                "submission_timestamp": submission_timestamp,
+                "batch_index": i,
+                "batch_size": len(st.session_state.articles_data),
                 "user_name": st.session_state.user_name,
                 "page": "curated_articles"
             }
@@ -504,7 +457,6 @@ if st.button("Submit Article Scores and Rankings"):
                 ranking_data["feedback"] = feedback
             rankings.append(ranking_data)
 
-            # Check if article has a response_array for embedding update
             if article.get('response_array'):
                 try:
                     updated_embedding = update_user_embedding(
@@ -513,7 +465,6 @@ if st.button("Submit Article Scores and Rankings"):
                         article['response_array'],
                         score
                     )
-                    # st.session_state.user_embedding = updated_embedding
                 except Exception as e:
                     st.error(f"Error updating user embedding for article {i+1}: {e}")
         

@@ -10,16 +10,16 @@ st.title("Most Popular Articles")
 
 def get_popular_articles(limit=10):
     """
-    Retrieve the most popular articles based on ranking scores.
+    Retrieve the most popular articles that still exist in the top_stories collection.
     
     Args:
     - limit (int): Number of top articles to retrieve
-    
+
     Returns:
     - List of most popular articles from top_stories collection
     """
     try:
-        # Aggregate rankings to calculate total scores for each article
+        # Join rankings with top_stories and calculate total scores
         ranking_pipeline = [
             {
                 "$group": {
@@ -28,30 +28,39 @@ def get_popular_articles(limit=10):
                 }
             },
             {
+                "$lookup": {
+                    "from": "top_stories",
+                    "localField": "_id",
+                    "foreignField": "title",
+                    "as": "article"
+                }
+            },
+            {
+                "$match": {
+                    "article": {"$ne": []}  # Only keep those that still exist in top_stories
+                }
+            },
+            {
                 "$sort": {"total_score": -1}
             },
             {
                 "$limit": limit
+            },
+            {
+                "$replaceRoot": {
+                    "newRoot": {
+                        "$mergeObjects": [{"$arrayElemAt": ["$article", 0]}, {"total_score": "$total_score"}]
+                    }
+                }
             }
         ]
-        
-        popular_rankings = list(rankings_collection.aggregate(ranking_pipeline))
-        
-        # Retrieve full article details for popular articles
-        popular_articles = []
-        for ranking in popular_rankings:
-            article = top_stories.find_one({"title": ranking['_id']})
-            if article:
-                # Add total score to the article dictionary
-                article['total_score'] = ranking['total_score']
-                popular_articles.append(article)
-        
+
+        popular_articles = list(rankings_collection.aggregate(ranking_pipeline))
         return popular_articles
-    
+
     except Exception as e:
         st.error(f"Error retrieving popular articles: {e}")
         return []
-
 # Initialize session state for popular articles
 if "popular_articles" not in st.session_state:
     st.session_state.popular_articles = get_popular_articles()
