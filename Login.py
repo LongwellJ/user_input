@@ -555,50 +555,50 @@ def main():
                 del st.session_state[key]
             st.warning("Logged out")
             
-    # Admin panel for user management
-    with st.expander("Admin Panel"):
-        st.write("Add a new user to the system:")
-        new_username = st.text_input("New username:")
-        if st.button("Add User"):
-            if new_username:
-                # Check if the user already exists
-                existing_user = users_collection.find_one({"username": new_username})
-                if existing_user:
-                    st.error(f"Username '{new_username}' already exists!")
-                else:
-                    # Add the new user to the MongoDB collection without a persona
-                    users_collection.insert_one({
-                        "username": new_username, 
-                        "created_at": pd.Timestamp.now()
-                    })
-                    st.success(f"User '{new_username}' added successfully! The user will need to complete initialization.")
-            else:
-                st.error("Please enter a username.")
+    # # Admin panel for user management
+    # with st.expander("Admin Panel"):
+    #     st.write("Add a new user to the system:")
+    #     new_username = st.text_input("New username:")
+    #     if st.button("Add User"):
+    #         if new_username:
+    #             # Check if the user already exists
+    #             existing_user = users_collection.find_one({"username": new_username})
+    #             if existing_user:
+    #                 st.error(f"Username '{new_username}' already exists!")
+    #             else:
+    #                 # Add the new user to the MongoDB collection without a persona
+    #                 users_collection.insert_one({
+    #                     "username": new_username, 
+    #                     "created_at": pd.Timestamp.now()
+    #                 })
+    #                 st.success(f"User '{new_username}' added successfully! The user will need to complete initialization.")
+    #         else:
+    #             st.error("Please enter a username.")
         
-        st.write("Current registered users:")
-        try:
-            users = list(users_collection.find({}, {"username": 1, "persona": 1, "_id": 0}))
-            if users:
-                user_df = pd.DataFrame(users)
-                st.dataframe(user_df)
-            else:
-                st.info("No users registered yet.")
-        except Exception as e:
-            st.error(f"Error loading users: {e}")
+    #     st.write("Current registered users:")
+    #     try:
+    #         users = list(users_collection.find({}, {"username": 1, "persona": 1, "_id": 0}))
+    #         if users:
+    #             user_df = pd.DataFrame(users)
+    #             st.dataframe(user_df)
+    #         else:
+    #             st.info("No users registered yet.")
+    #     except Exception as e:
+    #         st.error(f"Error loading users: {e}")
         
-        st.write("Delete a user:")
-        delete_username = st.text_input("Enter username to delete:")
-        if st.button("Delete User"):
-            if delete_username:
-                # Check if user exists
-                existing_user = users_collection.find_one({"username": delete_username})
-                if existing_user:
-                    users_collection.delete_one({"username": delete_username})
-                    st.success(f"User '{delete_username}' deleted successfully!")
-                else:
-                    st.error(f"Username '{delete_username}' does not exist!")
-            else:
-                st.error("Please enter a username to delete.")
+    #     st.write("Delete a user:")
+    #     delete_username = st.text_input("Enter username to delete:")
+    #     if st.button("Delete User"):
+    #         if delete_username:
+    #             # Check if user exists
+    #             existing_user = users_collection.find_one({"username": delete_username})
+    #             if existing_user:
+    #                 users_collection.delete_one({"username": delete_username})
+    #                 st.success(f"User '{delete_username}' deleted successfully!")
+    #             else:
+    #                 st.error(f"Username '{delete_username}' does not exist!")
+    #         else:
+    #             st.error("Please enter a username to delete.")
        
 
 if __name__ == "__main__":
