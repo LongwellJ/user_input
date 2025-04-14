@@ -90,34 +90,37 @@ def load_articles_with_date_filter(user_name, user_embedding, offset, limit, sta
         # Get user's publisher preferences
         user_data = users_collection.find_one({"username": user_name})
         user_interests = user_data.get("user_interests", {})
-        
+        publishers = user_interests.get("publishers", [])
         # # Get TC, W, and MG preferences
-        # tc_tags = user_interests.get("TC", [])
-        # w_tags = user_interests.get("W", [])
-        # mg_tags = user_interests.get("MG", [])
+        tc_tags = publishers.get("TC", [])
+        w_tags = publishers.get("W", [])
+        mg_tags = publishers.get("MG", [])
+        # print("tags", tc_tags, w_tags, mg_tags)
         
         # Create tags condition for TC and MG publishers
-        # combined_tags = tc_tags + w_tags
-        # tags_condition = {"tags": {"$in": combined_tags}} if combined_tags else {}
-        
+        combined_tags = tc_tags + w_tags
+        tags_condition = {"tags": {"$in": combined_tags}} if combined_tags else {}
+        # print(combined_tags, tags_condition)
+
         # Create link condition for MG publisher
         # Convert MG tags to URL-friendly format (lowercase, hyphenated)
-        # mg_url_patterns = []
-        # for tag in mg_tags:
-        #     # Convert spaces to hyphens and make lowercase
-        #     url_pattern = tag.lower().replace(" ", "-")
-        #     mg_url_patterns.append(url_pattern)
+        mg_url_patterns = []
+        for tag in mg_tags:
+            # Convert spaces to hyphens and make lowercase
+            url_pattern = tag.lower().replace(" ", "-")
+            mg_url_patterns.append(url_pattern)
         
-        # link_condition = {"true_link": {"$regex": "|".join(mg_url_patterns)}} if mg_url_patterns else {}
-        
-        # # Combine conditions with $or if both are present
-        # publisher_filter = {}
-        # if tags_condition and link_condition:
-        #     publisher_filter = {"$or": [tags_condition, link_condition]}
-        # elif tags_condition:
-        #     publisher_filter = tags_condition
-        # elif link_condition:
-        #     publisher_filter = link_condition
+        link_condition = {"true_link": {"$regex": "|".join(mg_url_patterns)}} if mg_url_patterns else {}
+        # print(link_condition)
+        # Combine conditions with $or if both are present
+        publisher_filter = {}
+        if tags_condition and link_condition:
+            publisher_filter = {"$or": [tags_condition, link_condition]}
+        elif tags_condition:
+            publisher_filter = tags_condition
+        elif link_condition:
+            publisher_filter = link_condition
+        print("publisher_filter", publisher_filter)
         
         # Choose loading method based on feedback count and embedding
         if feedback_count >= 5 and isinstance(user_embedding, list) and len(user_embedding) > 0:
@@ -130,12 +133,12 @@ def load_articles_with_date_filter(user_name, user_embedding, offset, limit, sta
                 }
             }
             
-            # # Add publisher filter if available
-            # if publisher_filter:
-            #     if "$or" in publisher_filter:
-            #         match_condition["$or"] = publisher_filter["$or"]
-            #     else:
-            #         match_condition.update(publisher_filter)
+            # Add publisher filter if available
+            if publisher_filter:
+                if "$or" in publisher_filter:
+                    match_condition["$or"] = publisher_filter["$or"]
+                else:
+                    match_condition.update(publisher_filter)
             
             pipeline = [
                 {
@@ -177,6 +180,9 @@ def load_articles_with_date_filter(user_name, user_embedding, offset, limit, sta
             })
             print(f"Articles excluded due to feedback: {excluded_count}")
             print(offset, limit, start_date, end_date, feedback_count, selected_collection)
+
+            for i in results:
+                print("vector", i.get("title"), i.get("tags"))
             return results
         else:
             # Regular collection query with date filter and publisher preferences
@@ -188,15 +194,24 @@ def load_articles_with_date_filter(user_name, user_embedding, offset, limit, sta
                 }
             }
             
-            # # Add publisher filter if available
-            # if publisher_filter:
-            #     if "$or" in publisher_filter:
-            #         query["$or"] = publisher_filter["$or"]
-            #     else:
-            #         query.update(publisher_filter)
-            
+            articles = list(selected_collection.find(query))
+            for i in articles:
+                print("unfiltered", i.get("title"), i.get("tags"))
+                
+            # Add publisher filter if available
+            if publisher_filter:
+                if "$or" in publisher_filter:
+                    query["$or"] = publisher_filter["$or"]
+                else:
+                    query.update(publisher_filter)
+
+
             articles = list(selected_collection.find(query).skip(offset).limit(limit))
+            for i in articles:
+                print("filtered", i.get("title"), i.get("tags"))
+
             return articles
+        
     except Exception as e:
         st.error(f"Error loading articles with date filter: {e}")
         return []
