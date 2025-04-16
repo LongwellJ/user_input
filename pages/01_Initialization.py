@@ -63,12 +63,6 @@ if "expanded_categories" not in st.session_state:
 
 # Get category information
 categories = load_category_info()
-# Do NOT pre-check everything — we will only initialize visible ones later
-if "user_selections" not in st.session_state:
-    st.session_state.user_selections = {}
-
-if "visible_topics" not in st.session_state:
-    st.session_state.visible_topics = set()
 
 st.write("Please select topics you're interested in. Click on a topic to view subtopics.")
 
@@ -151,7 +145,18 @@ col_idx = 0
 # Helper function to toggle category expansion
 def toggle_category(category_name):
     if category_name in st.session_state.expanded_categories:
+        # When collapsing a category, remove all selections for that category
         st.session_state.expanded_categories.remove(category_name)
+        
+        # Remove all selections for this category
+        keys_to_remove = []
+        for key in st.session_state.user_selections:
+            if key.startswith(f"{category_name}|"):
+                keys_to_remove.append(key)
+        
+        for key in keys_to_remove:
+            if key in st.session_state.user_selections:
+                del st.session_state.user_selections[key]
     else:
         st.session_state.expanded_categories.add(category_name)
 
@@ -166,12 +171,6 @@ for category_name, category_data in categories.items():
         # Display subcategories if this category is expanded
         if category_name in st.session_state.expanded_categories:
             st.markdown("<div class='subtopics-container'>", unsafe_allow_html=True)
-            # Add to visible topics
-            if isinstance(category_data, dict):
-                for subcat in category_data:
-                    st.session_state.visible_topics.add(f"{category_name}|{subcat}")
-            else:
-                st.session_state.visible_topics.add(f"{category_name}|general")
             
             # Create a container for all checkboxes
             checkbox_container = st.container()
@@ -205,7 +204,7 @@ for category_name, category_data in categories.items():
                                 value=True  
                             )
                         
-                         # Only update if visible and checked
+                        # Only update if checked
                         if is_checked:
                             st.session_state.user_selections[checkbox_key] = {
                                 "category": category_name,
@@ -218,7 +217,6 @@ for category_name, category_data in categories.items():
                 else:
                     # Handle categories that are just lists of sources
                     checkbox_key = f"{category_name}|general"
-                    
                     
                     is_checked = st.checkbox(
                         f"{category_name} (General)", 
@@ -276,23 +274,24 @@ def parse_sources_by_publisher(sources_by_selection):
     return publishers_dict
 
 if st.button("Save My Preferences", type="primary"):
-    # Filter selections to include only visible and checked topics
-    visible_checked_selections = {
-        key: val for key, val in st.session_state.user_selections.items()
-        if key in st.session_state.visible_topics
-    }
+    # Only include selections from expanded categories
+    filtered_selections = {}
+    for key, value in st.session_state.user_selections.items():
+        category = key.split('|')[0]
+        if category in st.session_state.expanded_categories:
+            filtered_selections[key] = value
 
-    if not visible_checked_selections:
+    if not filtered_selections:
         st.error("Please select at least one topic or subtopic.")
     else:
         user_interests = {
-            "categories": list(set([item["category"] for item in visible_checked_selections.values()])),
-            "subcategories": list(set([f"{item['category']}: {item['subcategory']}" for item in visible_checked_selections.values()
+            "categories": list(set([item["category"] for item in filtered_selections.values()])),
+            "subcategories": list(set([f"{item['category']}: {item['subcategory']}" for item in filtered_selections.values()
                                        if item["subcategory"] != "general"])),
-            "sources": list(set([source for item in visible_checked_selections.values()
+            "sources": list(set([source for item in filtered_selections.values()
                                  for source in item["sources"]])),
-            "selection_keys": list(visible_checked_selections.keys()),
-            "sources_by_selection": {key: item["sources"] for key, item in visible_checked_selections.items()}
+            "selection_keys": list(filtered_selections.keys()),
+            "sources_by_selection": {key: item["sources"] for key, item in filtered_selections.items()}
         }
         
         # Parse the sources by publisher

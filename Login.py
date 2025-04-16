@@ -506,41 +506,57 @@ if "needs_initialization" not in st.session_state:
     st.session_state.needs_initialization = False
 if "publishers" not in st.session_state:
     st.session_state.publishers = {"TC": [], "W": [], "MG": []}
-        
+
 # --- Home Page (User Form) ---
 def main():
     st.set_page_config(page_title="Login", layout="wide")
     st.title("Read My Sources")
     load_css()
+    
     user_name = st.text_input("Enter your username:", value=st.session_state.user_name)
+    
     # Create two columns
     col1, col2 = st.columns(2)
 
     with col1:
         if st.button("Login"):
-            st.session_state.user_name = user_name
-            clear_article_session_data()
-            # Check if user exists in the MongoDB collection
-            if authenticate_user(user_name):
-                st.session_state.is_valid_user = True
-                
-                # Update session with all necessary user data including publishers
-                update_session_with_user_data(user_name)
-        
-                # Check if the user has a persona
-                if check_user_initialized(user_name):
-                    st.success(f"Welcome back, {user_name}! You can now access the curated articles.")
-                    # Display the publishers data that's now available in session state
-                    st.write("Your publisher preferences are loaded and ready to use.")
-                    st.write("Please use the navigation to view articles.")
-                else:
-                    st.session_state.needs_initialization = True
-                    st.warning(f"Welcome, {user_name}! You need to complete a quick initialization process.")
-                    st.write("Please go to the Initialization page in the navigation menu.")
+            if not user_name.strip():
+                st.error("Please enter a username to login.")
             else:
-                st.session_state.is_valid_user = False
-                st.warning("Invalid username. You can still view random articles.")
-                st.write("Please use the navigation to view random articles.")
+                st.session_state.user_name = user_name
+                clear_article_session_data()
+                
+                # Check if user exists in the MongoDB collection
+                existing_user = users_collection.find_one({"username": user_name})
+                
+                if existing_user:
+                    # User exists
+                    st.session_state.is_valid_user = True
+                    
+                    # Update session with all necessary user data including publishers
+                    update_session_with_user_data(user_name)
+            
+                    # Check if the user has a persona
+                    if check_user_initialized(user_name):
+                        st.success(f"Welcome back, {user_name}! You can now access the curated articles.")
+                        # Display the publishers data that's now available in session state
+                        st.write("Your publisher preferences are loaded and ready to use.")
+                        st.write("Please use the navigation to view articles.")
+                    else:
+                        st.session_state.needs_initialization = True
+                        st.warning(f"Welcome, {user_name}! You need to complete a quick initialization process.")
+                        st.write("Please go to the Initialization page in the navigation menu.")
+                else:
+                    # User doesn't exist - create new account
+                    users_collection.insert_one({
+                        "username": user_name, 
+                        "created_at": datetime.now()
+                    })
+                    st.session_state.is_valid_user = True
+                    st.session_state.needs_initialization = True
+                    st.success(f"New account created for {user_name}!")
+                    st.warning("Please complete the initialization process.")
+                    st.write("Go to the Initialization page in the navigation menu.")
 
     with col2:
         if st.button("Logout"):
