@@ -110,7 +110,12 @@ def load_articles_with_date_filter(user_name, user_embedding, offset, limit, sta
             url_pattern = tag.lower().replace(" ", "-")
             mg_url_patterns.append(url_pattern)
         
-        link_condition = {"true_link": {"$regex": "|".join(mg_url_patterns)}} if mg_url_patterns else {}
+        if len(mg_url_patterns) > 0:
+            regex_or_conditions = [{"link": {"$regex": pattern}} for pattern in mg_url_patterns] + \
+                                [{"real_link": {"$regex": pattern}} for pattern in mg_url_patterns]
+            link_condition = {"$or": regex_or_conditions}
+        else:
+            link_condition = {}
         # print(link_condition)
         # Combine conditions with $or if both are present
         publisher_filter = {}
@@ -490,9 +495,9 @@ else:
                 update_rankings(article_idx, new_rank)
                 st.rerun()
             
-            st.markdown(f"**Current Rank: {current_rank}**")
+            # st.markdown(f"**Current Rank: {current_rank}**")
             display_position = st.session_state.display_order.index(article_idx) + 1 if article_idx in st.session_state.display_order else "Unknown"
-            st.markdown(f"**Display Position: {display_position}**")
+            # st.markdown(f"**Display Position: {display_position}**")
 
 # --- Submit Rankings Button ---
 if st.button("Submit Article Scores and Rankings"):
