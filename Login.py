@@ -48,7 +48,7 @@ def authenticate_user(username):
 def check_user_initialized(username):
     """Check if the user has completed initialization (has a persona)"""
     user = users_collection.find_one({"username": username})
-    return user is not None and "persona" in user
+    return user is not None #and "persona" in user
 
 def get_user_publishers(username):
     """Get the user's publishers data from MongoDB"""
