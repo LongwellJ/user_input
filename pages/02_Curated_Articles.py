@@ -20,11 +20,11 @@ from Login import (
     track_user_article_feedback,
     get_user_feedback_article_ids
 )
-import streamlit_analytics
+# import streamlit_analytics
 
 # Load CSS and start analytics tracking
 load_css()
-streamlit_analytics.start_tracking()
+# streamlit_analytics.start_tracking()
 st.title("Curated Articles")
 
 # Check if user is valid using MongoDB authentication
@@ -577,4 +577,4 @@ if st.button("Submit Satisfaction Score", key="curated_satisfaction_button"):
         except Exception as e:
             st.error(f"Error saving satisfaction score: {e}")
 
-streamlit_analytics.stop_tracking()
+# streamlit_analytics.stop_tracking()

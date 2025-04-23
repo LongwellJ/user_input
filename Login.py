@@ -3,7 +3,7 @@ import pandas as pd
 import uuid
 from bs4 import BeautifulSoup
 import pymongo
-import streamlit_analytics
+# import streamlit_analytics
 from datetime import datetime
 from bson.objectid import ObjectId
 import numpy as np
